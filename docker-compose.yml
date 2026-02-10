@@ -1,0 +1,43 @@
+services:
+  db:
+    image: postgres:latest
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    environment:
+      - POSTGRES_DB=app_db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  fastapi_service:
+    build: ./fastapi_app
+    volumes:
+      - ./media:/app/media  # Shared volume for PDFs
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/app_db
+    depends_on:
+      db:
+        condition: service_healthy
+
+  django:
+    build: ./job_finder
+    volumes:
+      - ./job_finder:/app
+      - ./media:/app/media  # Same shared volume
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/app_db
+      - FASTAPI_URL=http://fastapi_service:8000
+    depends_on:
+      db:
+        condition: service_healthy
+      fastapi_service:
+        condition: service_started
+
+volumes:
+  postgres_data:
