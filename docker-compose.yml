@@ -15,10 +15,17 @@ services:
 
   fastapi_service:
     build: ./fastapi_app
+    ports:
+      - "8001:8000"
     volumes:
+      - ./fastapi_app:/app
+      - ./job_finder:/app/job_finder  # <--- This maps Django project inside FastAPI
       - ./media:/app/media  # Shared volume for PDFs
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/app_db
+      - DJANGO_SETTINGS_MODULE=job_finder.settings
+      - PYTHONPATH=/app:/app/job_finder # <--- Helps Python find modules
+      - PYTHONUNBUFFERED=1 # print as it happens
     depends_on:
       db:
         condition: service_healthy

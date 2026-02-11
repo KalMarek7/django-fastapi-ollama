@@ -28,6 +28,8 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
+# Format: 'app_name.ModelName'
+AUTH_USER_MODEL = "accounts.CustomUser"
 
 # Application definition
 
@@ -39,6 +41,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "home",
+    "accounts",
 ]
 
 MIDDLEWARE = [

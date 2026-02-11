@@ -17,7 +17,7 @@ async def update_view(request):
             # Fire both requests at once!
             # responses[0] will be the scrape, responses[1] will be the pdf
             responses = await asyncio.gather(
-                client.get(f"{fastapi_base}"),
+                client.post(f"{fastapi_base}/jobs/schedule"),
                 # client.post(f"{fastapi_base}/analyze-pdf", json={"file_path": "uploads/cv.pdf"}),
                 # If one fails, the others continue (optional: return_exceptions=True)
             )
@@ -34,6 +34,6 @@ async def update_view(request):
         request,
         "home/partial.html",
         {
-            "data": scrape_data.get("data"),
+            "data": scrape_data,
         },
     )

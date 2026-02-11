@@ -1,5 +1,7 @@
-uvicorn
 fastapi
-pydantic
-requests
+uvicorn
+django
+psycopg2-binary
+asgiref          # Required for sync_to_async
 beautifulsoup4
+httpx
