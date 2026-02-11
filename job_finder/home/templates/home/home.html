@@ -4,10 +4,12 @@
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>Document</title>
-        <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.8/dist/htmx.min.js" integrity="sha384-/TgkGk7p307TH7EXJDuUlgG3Ce1UVolAOFopFekQkkXihi5u/6OCvVKyz1W+idaz" crossorigin="anonymous"></script>
+        {% load static %}
+        <link rel="stylesheet" href="{% static 'css/output.css' %}">
+        <script src="{% static 'libs/htmx.min.js' %}" defer></script>
     </head>
     <body>
-        <button hx-get="/update" hx-trigger="click" hx-target="#update-content">Update</button>
+        <button class="border border-black rounded-md px-4 py-2 bg-white text-black" hx-get="/update" hx-trigger="click" hx-target="#update-content">Update</button>
         <div id="update-content">
         </div>
     </body>
