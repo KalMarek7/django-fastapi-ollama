@@ -1,0 +1,24 @@
+{
+    "user_agents": [
+        {
+            "browser": "Chrome on Windows",
+            "string": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
+        },
+        {
+            "browser": "Firefox on Windows",
+            "string": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:122.0) Gecko/20100101 Firefox/122.0"
+        },
+        {
+            "browser": "Safari on macOS",
+            "string": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2.1 Safari/605.1.15"
+        },
+        {
+            "browser": "Edge on Windows",
+            "string": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36 Edg/121.0.2277.83"
+        },
+        {
+            "browser": "Chrome on Android (Mobile)",
+            "string": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.6167.143 Mobile Safari/537.36"
+        }
+    ]
+}
