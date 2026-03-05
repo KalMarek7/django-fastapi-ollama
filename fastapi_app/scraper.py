@@ -20,11 +20,8 @@ logger = logging.getLogger(__name__)
 class JobListingSchema(BaseModel):
     title: Optional[str] = Field(None, max_length=100)
     company: Optional[str] = Field(None, max_length=100)
-
-    # Change these to Optional
     text_content: Optional[str] = None
     portal_id: Optional[int] = None
-
     expiry_date: Optional[date] = None
     url: Optional[HttpUrl] = None
     created_at: Optional[datetime] = None
@@ -80,30 +77,16 @@ class BaseScraper:
             if as_json:
                 return response.json()
             if raw:
-                sleep(3)
+                sleep(2)
                 if self.portal == "Pracuj.pl":
                     soup = BeautifulSoup(response.content, "html.parser")
-                    details_div = soup.find("div", id="offer-details")
-                    target = details_div if details_div else soup
-                    for junk in target.find_all(
-                        ["svg", "script", "style", "button", "img"]
-                    ):
-                        junk.decompose()
-                    return target.getText("\n")
+                    return self._clean_html_content(soup, self.portal)
                 elif self.portal == "JustJoinIT":
-                    return BeautifulSoup(
-                        response.json()["body"], "html.parser"
-                    ).getText("\n")
+                    soup = BeautifulSoup(response.json()["body"], "html.parser")
+                    return self._clean_html_content(soup, self.portal)
                 elif self.portal == "theprotocol.it":
                     soup = BeautifulSoup(response.content, "html.parser")
-                    details_section = soup.find("section", id="section-offerView")
-                    target = details_section if details_section else soup
-                    for junk in target.find_all(
-                        ["svg", "script", "style", "button", "img", "a"]
-                    ):
-                        junk.decompose()
-
-                    return target.getText("\n")
+                    return self._clean_html_content(soup, self.portal)
 
             return BeautifulSoup(response.content, "html.parser")
 
@@ -116,6 +99,28 @@ class BaseScraper:
     def _get_random_ua(self) -> str:
         result = random.choice(self.user_agents["user_agents"])["string"]
         return result
+
+    def _clean_html_content(self, soup_target: BeautifulSoup, portal_name: str) -> str:
+        container_mapping = {
+            "Pracuj.pl": {"tag": "div", "id": "offer-details"},
+            "theprotocol.it": {"tag": "section", "id": "section-offerView"},
+        }
+
+        junk_tags = ["svg", "script", "style", "button", "img"]
+        if portal_name == "theprotocol.it":
+            junk_tags.append("a")
+
+        target = soup_target
+        if portal_name in container_mapping:
+            mapping = container_mapping[portal_name]
+            container = soup_target.find(mapping["tag"], id=mapping["id"])
+            if container:
+                target = container
+
+        for junk in target.find_all(junk_tags):
+            junk.decompose()
+
+        return target.getText("\n")
 
 
 class PracujplScraper(BaseScraper):
@@ -318,7 +323,7 @@ def get_listings_details(job_listing: JobListingSchema):
         RuntimeError: If there is an error calling the Gemini API.
     """
     logger.debug("Starting get_listings_details() to gemma model")
-    sleep(3)
+    sleep(1)
     api_key = os.environ.get("GOOGLE_API_KEY")
     if not api_key:
         raise ValueError("Google API key is missing.")
