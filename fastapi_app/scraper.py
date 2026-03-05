@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import random
 from datetime import date, datetime
@@ -12,6 +13,8 @@ from google import genai
 from google.api_core import exceptions
 from google.genai import types
 from pydantic import BaseModel, Field, HttpUrl
+
+logger = logging.getLogger(__name__)
 
 
 class JobListingSchema(BaseModel):
@@ -44,7 +47,9 @@ class BaseScraper:
             with open(json_path, "r") as f:
                 self.user_agents = json.load(f)
         except FileNotFoundError:
-            print(f"Did not find user_agents.json file at {json_path}.")
+            logger.warning(
+                "user_agents.json not found at %s. Using fallback.", json_path
+            )
             self.user_agents = {"user_agents": [{"string": "Mozilla/5.0"}]}  # Fallback
 
     def get_data(
@@ -63,7 +68,7 @@ class BaseScraper:
 
         # We use httpx.Client() for synchronous requests inside background tasks
         with httpx.Client(follow_redirects=True, timeout=10.0) as client:
-            print("DEBUG: Making request to", url)
+            logger.debug("Making request to %s", url)
             if post:
                 content = '{"criteria":"","url":{"searchParam":"Python"},"rawSearch":"Python","pageSize":20,"withSalaryMatch":true}'
                 response = client.post(url, headers=headers, content=content)
@@ -71,7 +76,7 @@ class BaseScraper:
                 response = client.get(url, headers=headers)
             # Ensures we handle 4xx/5xx errors
             response.raise_for_status()
-            print(f"DEBUG Headers: {response.request.headers}")
+            logger.debug("Request headers: %s", response.request.headers)
             if as_json:
                 return response.json()
             if raw:
@@ -134,7 +139,7 @@ class PracujplScraper(BaseScraper):
             else:
                 total_pages = 1
 
-            print(f"DEBUG: Found {total_pages} pages.")
+            logger.debug("Found %s pages.", total_pages)
 
             # 3. Process the first page we already fetched
             first_page_offers = first_soup.find_all(
@@ -148,7 +153,7 @@ class PracujplScraper(BaseScraper):
                 # URL construction: PN is the standard query param for Pracuj.pl
                 page_url = f"{self.url}&pn={i}"
 
-                print(f"DEBUG: Fetching page {i} of {total_pages}")
+                logger.debug("Fetching page %s of %s", i, total_pages)
                 soup = self.get_data(url=page_url)
 
                 if isinstance(soup, BeautifulSoup):
@@ -156,7 +161,7 @@ class PracujplScraper(BaseScraper):
                     all_offers.extend(div_cnt)
 
             all_offers_urls = [offer.find("a").get("href") for offer in all_offers]
-            print(f"DEBUG: Total offers collected: {len(all_offers_urls)}")
+            logger.debug("Total offers collected: %s", len(all_offers_urls))
             # print(all_offers_urls)
 
             return all_offers_urls
@@ -192,7 +197,7 @@ class TheProtocolITScraper(BaseScraper):
         except KeyError:
             return []
 
-        print(f"DEBUG: Found {total_pages} pages. Starting pagination...")
+        logger.debug("Found %s pages. Starting pagination...", total_pages)
 
         # 2. Loop through remaining pages (starting from page 2)
         for page_num in range(2, total_pages + 1):
@@ -202,7 +207,7 @@ class TheProtocolITScraper(BaseScraper):
             separator = "&" if "?" in self.url else "?"
             page_url = f"{self.url}{separator}pageNumber={page_num}"
 
-            print(f"DEBUG: Fetching page {page_num} of {total_pages}")
+            logger.debug("Fetching page %s of %s", page_num, total_pages)
 
             page_data = self._extract_next_data(page_url)
             if page_data:
@@ -214,8 +219,7 @@ class TheProtocolITScraper(BaseScraper):
         all_offers_urls = [
             f"{self.url}/praca/{offer['offerUrlName']}" for offer in all_offers
         ]
-        print(f"DEBUG: Found {len(all_offers_urls)} offers.")
-        # print(all_offers_urls)
+        logger.debug("Found %s offers.", len(all_offers_urls))
         return all_offers_urls
 
 
@@ -226,7 +230,7 @@ class JustJoinITScraper(BaseScraper):
         current_offset = 0
         total_items = 1  # Temporary starter value
 
-        print("DEBUG: Starting JustJoinIT API scan...")
+        logger.debug("Starting JustJoinIT API scan...")
 
         while current_offset < total_items:
             # Construct the URL with dynamic offset
@@ -244,7 +248,7 @@ class JustJoinITScraper(BaseScraper):
             # Update total_items from the first response's meta
             if current_offset == 0:
                 total_items = data.get("meta", {}).get("totalItems", 0)
-                print(f"DEBUG: Found {total_items} items total.")
+                logger.debug("Found %s items total.", total_items)
 
             # Extract slugs and build URLs
             batch = [
@@ -253,7 +257,7 @@ class JustJoinITScraper(BaseScraper):
             ]
             all_offer_urls.extend(batch)
 
-            print(f"DEBUG: Processed {len(all_offer_urls)}/{total_items} URLs...")
+            logger.debug("Processed %s/%s URLs...", len(all_offer_urls), total_items)
 
             # Increment offset for next page
             current_offset += page_size
@@ -313,8 +317,8 @@ def get_listings_details(job_listing: JobListingSchema):
         ValueError: If the API key is not configured.
         RuntimeError: If there is an error calling the Gemini API.
     """
-    print("DEBUG: Starting get_listings_details() to gemma model")
-    sleep(10)
+    logger.debug("Starting get_listings_details() to gemma model")
+    sleep(3)
     api_key = os.environ.get("GOOGLE_API_KEY")
     if not api_key:
         raise ValueError("Google API key is missing.")
@@ -329,7 +333,7 @@ def get_listings_details(job_listing: JobListingSchema):
             ],
         )
         if response.text:
-            print(f"DEBUG: LLM raw response: {response.text}")
+            logger.info("LLM raw response: %s", response.text)
             clean_json = (
                 response.text.replace("```json", "")
                 .replace("```", "")
@@ -338,7 +342,7 @@ def get_listings_details(job_listing: JobListingSchema):
                 .strip()
             )
             data = json.loads(clean_json)
-            print(f"DEBUG: LLM clean data: {data}")
+            logger.info("LLM clean data: %s", data)
 
             # This returns the validated Pydantic object
             return JobListingSchema(**data)

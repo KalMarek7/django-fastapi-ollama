@@ -1,3 +1,4 @@
+import logging
 import os
 import uuid
 from typing import Optional
@@ -6,10 +7,16 @@ import django
 from asgiref.sync import sync_to_async
 from fastapi import BackgroundTasks, FastAPI
 from pydantic import BaseModel, Field, HttpUrl, model_validator
-from scraper import (  # noqa: F401
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+)
+
+logger = logging.getLogger(__name__)
+from scraper import (  # noqa: E402, F401
     JobListingSchema,
     JustJoinITScraper,
-    NoFluffJobsScraper,
     PracujplScraper,
     TheProtocolITScraper,
     get_listings_details,
@@ -47,66 +54,83 @@ class TaskScheduleResponse(BaseModel):
     )
 
 
+def _get_task_record(task_id: uuid.UUID) -> Task:
+    task_record = Task.objects.get(task_id=task_id)
+    if task_record.status in ["in_progress", "completed"]:
+        logger.debug("Task %s already handled. Skipping.", task_id)
+        raise ValueError(f"Task {task_id} already handled.")
+    task_record.status = "in_progress"
+    task_record.save()
+    return task_record
+
+
+def _process_job_listing(job_listing_url: str, scraper) -> None:
+    logger.debug("Scraping %s", job_listing_url)
+    portal = Portal.objects.get(name=scraper.portal)
+    text_content = scraper.get_data(job_listing_url, raw=True)
+
+    obj, created = JobListing.objects.update_or_create(
+        url=job_listing_url,
+        defaults={
+            "text_content": text_content,
+            "portal": portal,
+        },
+    )
+    logger.debug("Done with scraping. Starting LLM...")
+
+    jls = get_listings_details(JobListingSchema.model_validate(obj))
+    if isinstance(jls, JobListingSchema):
+        JobListing.objects.filter(url=job_listing_url).update(
+            title=jls.title,
+            expiry_date=jls.expiry_date,
+            company=jls.company,
+        )
+
+
+def _scrape_portal(scraper) -> None:
+    job_listings = scraper.get_all_listings()
+    logger.info("%s items found for %s", len(job_listings), scraper)
+
+    for job_listing in job_listings[:5]:
+        _process_job_listing(job_listing, scraper)
+
+
 def perform_scraping_task(task_id: uuid.UUID):
-    print(f"DEBUG: Task {task_id} is EXECUTING now...")
-    # This runs AFTER the response is sent
+    logger.info("Task %s is EXECUTING now...", task_id)
     try:
-        print("Starting task...")
-        task_record = Task.objects.get(task_id=task_id)
-        if task_record.status in ["in_progress", "completed"]:
-            print(f"DEBUG: Task {task_id} already handled. Skipping.")
-            return
-        task_record.status = "in_progress"
-        task_record.save()
-        """
-        tasks = [
-        
-        task_nfj = NoFluffJobsScraper(
-        "https://nofluffjobs.com/api/search/posting?sort=newest&withSalaryMatch=true&pageTo=2&pageSize=20&salaryCurrency=PLN&
-        salaryPeriod=month&region=pl&language=pl-PL"
-        ) 
+        logger.info("Starting task...")
+        task_record = _get_task_record(task_id)
+
+        scrapers = [
+            PracujplScraper(
+                "https://it.pracuj.pl/praca?sc=0&its=backend&itth=37", "Pracuj.pl"
+            ),
+            JustJoinITScraper(
+                "https://justjoin.it/api/candidate-api/offers?from=0&itemsCount=100&categories=python&currency=pln&orderBy=descending&sortBy=publishedAt",
+                "JustJoinIT",
+            ),
+            TheProtocolITScraper(
+                "https://theprotocol.it/filtry/python;t/backend;sp", "theprotocol.it"
+            ),
         ]
-        
-        """
-        task_tp = TheProtocolITScraper(
-            "https://theprotocol.it/filtry/python;t/backend;sp", "theprotocol.it"
-        )
-        task_jjit = JustJoinITScraper(
-            "https://justjoin.it/api/candidate-api/offers?from=0&itemsCount=100&categories=python&currency=pln&orderBy=descending&sortBy=publishedAt",
-            "JustJoinIT",
-        )
-        task_pracuj = PracujplScraper(
-            "https://it.pracuj.pl/praca?sc=0&its=backend&itth=37", "Pracuj.pl"
-        )
-        for task in [task_pracuj, task_jjit, task_tp]:
-            job_listings = task.get_all_listings()
-            print(f"DEBUG: {len(job_listings)} items found for {task}")
-            result = []
-            for job_listing in job_listings[:10]:
-                print(f"DEBUG: Scraping {job_listing}")
-                obj, created = JobListing.objects.update_or_create(
-                    url=job_listing,
-                    defaults={
-                        "text_content": task.get_data(job_listing, raw=True),
-                        "portal": Portal.objects.get(name=task.portal),
-                    },
-                )
-                print("DEBUG: Done with scraping. Starting LLM...")
-                # 4. Get LLM results
-                jls = get_listings_details(JobListingSchema.model_validate(obj))
-                JobListing.objects.filter(url=job_listing).update(
-                    title=jls.title,
-                    expiry_date=jls.expiry_date,  #  # type: ignore
-                    company=jls.company,  # type: ignore
-                )
+
+        for scraper in scrapers:
+            _scrape_portal(scraper)
+
         task_record.status = "completed"
         task_record.save()
-        print(f"Task {task_id} completed successfully.")
-        return result
+        logger.info("Task %s completed successfully.", task_id)
+    except ValueError:
+        pass
     except Exception as e:
-        task_record.status = "failed"
-        task_record.save()
-        print(f"Task {task_id} failed: {e}")
+        try:
+            task_record.status = "failed"
+            task_record.save()
+        except UnboundLocalError:
+            logger.error(
+                "Task %s failed before task_record could be created: %s", task_id, e
+            )
+        logger.error("Task %s failed: %s", task_id, e)
 
 
 class ScrapeRequest(BaseModel):
@@ -150,13 +174,15 @@ async def schedule_task(
     target_url = None
     target_portal = None
 
-    if payload and payload.url:
+    if payload is not None and payload.url is not None:
         target_url = str(payload.url)
         target_portal = payload.portal
-        print(f"DEBUG: Task {task_id} is scheduled for {target_url} on {target_portal}")
+        logger.info(
+            "Task %s is scheduled for %s on %s", task_id, target_url, target_portal
+        )
     await sync_to_async(Task.objects.create)(task_id=task_id, status="pending")
     background_tasks.add_task(perform_scraping_task, task_id)
-    print(f"Job {task_id}")
+    logger.info("Job %s scheduled", task_id)
     return {
         "task_id": str(task_id),
         "message": "Task started in background",

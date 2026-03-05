@@ -1,1 +1,5 @@
 npx @tailwindcss/cli -i ./job_finder/static/src/input.css -o ./job_finder/static/css/output.css --watch
+
+# TODO:
+- accept url and portal to process just inidividual JobListing
+- review justjoinit for missing content
