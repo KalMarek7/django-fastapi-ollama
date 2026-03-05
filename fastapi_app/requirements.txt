@@ -5,3 +5,6 @@ psycopg2-binary
 asgiref          # Required for sync_to_async
 beautifulsoup4
 httpx
+google-api-core
+google-genai
+pydantic

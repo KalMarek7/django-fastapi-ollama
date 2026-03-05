@@ -9,7 +9,7 @@
         <script src="{% static 'libs/htmx.min.js' %}" defer></script>
     </head>
     <body>
-        <button class="border border-black rounded-md px-4 py-2 bg-white text-black" hx-get="/update" hx-trigger="click" hx-target="#update-content">Update</button>
+        <button class="border border-black rounded-md px-4 py-2 bg-white text-black" hx-get="/update" hx-trigger="click" hx-target="#update-content" hx-swap="beforeend">Update</button>
         <div id="update-content">
         </div>
     </body>

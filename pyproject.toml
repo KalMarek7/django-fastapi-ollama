@@ -5,7 +5,13 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "beautifulsoup4>=4.14.3",
+    "uvicorn",
     "django>=6.0.2",
+    "fastapi>=0.129.0",
     "httpx>=0.28.1",
     "psycopg2-binary>=2.9.11",
+    "google-api-core",
+    "google-genai",
+    "pydantic",
 ]

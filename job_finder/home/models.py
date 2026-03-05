@@ -3,14 +3,23 @@ from django.db import models
 
 # Create your models here.
 class JobListing(models.Model):
-    title = models.CharField(max_length=100)
+    title = models.CharField(null=True, blank=True, max_length=100)
     text_content = models.TextField()
-    expiry_date = models.DateField()
-    url = models.URLField()
+    expiry_date = models.DateField(
+        null=True,
+        blank=True,
+    )
+    url = models.URLField(
+        null=True,
+        blank=True,
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    company = models.CharField(max_length=100)
-    score = models.FloatField()
+    company = models.CharField(null=True, blank=True, max_length=100)
+    score = models.FloatField(
+        null=True,
+        blank=True,
+    )
     portal = models.ForeignKey("Portal", on_delete=models.CASCADE)
 
 
