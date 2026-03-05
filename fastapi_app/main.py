@@ -91,31 +91,53 @@ def _scrape_portal(scraper) -> None:
     job_listings = scraper.get_all_listings()
     logger.info("%s items found for %s", len(job_listings), scraper)
 
-    for job_listing in job_listings[:5]:
+    for job_listing in job_listings[10:15]:
         _process_job_listing(job_listing, scraper)
 
 
-def perform_scraping_task(task_id: uuid.UUID):
+def _get_scraper_for_portal(url: str, portal: str):
+    portal_map = {
+        "Pracuj.pl": PracujplScraper,
+        "JustJoinIT": JustJoinITScraper,
+        "theprotocol.it": TheProtocolITScraper,
+    }
+    scraper_class = portal_map.get(portal)
+    if scraper_class is None:
+        raise ValueError(f"Unknown portal: {portal}")
+    return scraper_class(url, portal)
+
+
+def perform_scraping_task(
+    task_id: uuid.UUID,
+    target_url: Optional[str] = None,
+    target_portal: Optional[str] = None,
+):
     logger.info("Task %s is EXECUTING now...", task_id)
     try:
         logger.info("Starting task...")
         task_record = _get_task_record(task_id)
 
-        scrapers = [
-            PracujplScraper(
-                "https://it.pracuj.pl/praca?sc=0&its=backend&itth=37", "Pracuj.pl"
-            ),
-            JustJoinITScraper(
-                "https://justjoin.it/api/candidate-api/offers?from=0&itemsCount=100&categories=python&currency=pln&orderBy=descending&sortBy=publishedAt",
-                "JustJoinIT",
-            ),
-            TheProtocolITScraper(
-                "https://theprotocol.it/filtry/python;t/backend;sp", "theprotocol.it"
-            ),
-        ]
+        if target_url is not None and target_portal is not None:
+            logger.info("Scraping single URL: %s from %s", target_url, target_portal)
+            scraper = _get_scraper_for_portal(target_url, target_portal)
+            _process_job_listing(target_url, scraper)
+        else:
+            scrapers = [
+                PracujplScraper(
+                    "https://it.pracuj.pl/praca?sc=0&its=backend&itth=37", "Pracuj.pl"
+                ),
+                JustJoinITScraper(
+                    "https://justjoin.it/api/candidate-api/offers?from=0&itemsCount=100&categories=python&currency=pln&orderBy=descending&sortBy=publishedAt",
+                    "JustJoinIT",
+                ),
+                TheProtocolITScraper(
+                    "https://theprotocol.it/filtry/python;t/backend;sp",
+                    "theprotocol.it",
+                ),
+            ]
 
-        for scraper in scrapers:
-            _scrape_portal(scraper)
+            for scraper in scrapers:
+                _scrape_portal(scraper)
 
         task_record.status = "completed"
         task_record.save()
@@ -166,7 +188,7 @@ async def schedule_task(
     2. Persists a **pending** task in the Django database.
     3. Offloads the heavy scraping/LLM logic to a **Background Task**.
 
-    Send empty payload to scrape all jobs from all portals.
+    Send empty payload `{}` to scrape all jobs from all portals.
     Send payload with `url` and `portal` to scrape a specific job from a specific portal.
     """
     task_id = uuid.uuid4()
@@ -181,7 +203,7 @@ async def schedule_task(
             "Task %s is scheduled for %s on %s", task_id, target_url, target_portal
         )
     await sync_to_async(Task.objects.create)(task_id=task_id, status="pending")
-    background_tasks.add_task(perform_scraping_task, task_id)
+    background_tasks.add_task(perform_scraping_task, task_id, target_url, target_portal)
     logger.info("Job %s scheduled", task_id)
     return {
         "task_id": str(task_id),
