@@ -41,7 +41,11 @@ app = FastAPI(
         }
     ],
 )
-from home.models import JobListing, Portal  # type: ignore # noqa: E402
+from home.models import (  # type: ignore # noqa: E402
+    JobListing,
+    Portal,
+    SystemInstruction,
+)
 from tasks.models import Task  # type: ignore # noqa: E402
 
 
@@ -78,7 +82,10 @@ def _process_job_listing(job_listing_url: str, scraper) -> None:
     )
     logger.debug("Done with scraping. Starting LLM...")
 
-    jls = get_listings_details(JobListingSchema.model_validate(obj))
+    jls = get_listings_details(
+        JobListingSchema.model_validate(obj),
+        SystemInstruction.objects.get(pk=1).instruction,
+    )
     if isinstance(jls, JobListingSchema):
         JobListing.objects.filter(url=job_listing_url).update(
             title=jls.title,

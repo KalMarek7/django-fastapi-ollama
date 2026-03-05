@@ -286,29 +286,7 @@ class NoFluffJobsScraper(BaseScraper):
         return []
 
 
-# System instruction for gemma model
-SYSTEM_INSTRUCTION = """You are a web scraper for IT job listings. Your task is to extract the job listing from a scraped text and return a dictionary.
-
-Django model for item validation:
-```python
-class JobListing(models.Model):
-    title = models.CharField(null=True, blank=True, max_length=100)
-    expiry_date = models.DateField(
-        null=True,
-        blank=True,
-    )
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    company = models.CharField(null=True, blank=True, max_length=100)
-```
-Task:
-Output JobListing containing all the fields from JobListing model using the scraped text. If you can't set the field, leave it as None. Return ONLY required fields. Return ONLY a raw dictionary with double quotes. Do not include markdown code blocks (```), preamble, or explanations.
-
-Output ONLY valid JSON. Start the response with { and end with }. Do not use backslashes to escape quotes inside the JSON keys or values. Do not provide any conversational text.
-"""
-
-
-def get_listings_details(job_listing: JobListingSchema):
+def get_listings_details(job_listing: JobListingSchema, system_instruction: str):
     """
     Processes a receipt image using the Gemini API and returns a list of items.
 
@@ -333,7 +311,7 @@ def get_listings_details(job_listing: JobListingSchema):
         response = client.models.generate_content(
             model="gemma-3-27b-it",
             contents=[
-                types.Part.from_text(text=SYSTEM_INSTRUCTION),
+                types.Part.from_text(text=system_instruction),
                 types.Part.from_text(text=job_listing.text_content),  # type: ignore
             ],
         )
