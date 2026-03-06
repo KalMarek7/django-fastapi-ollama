@@ -16,11 +16,10 @@ class JobListing(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     company = models.CharField(null=True, blank=True, max_length=100)
-    score = models.FloatField(
-        null=True,
-        blank=True,
-    )
+    years_of_experience = models.IntegerField(null=True, blank=True, verbose_name="YoE")
+    salary = models.CharField(null=True, blank=True, max_length=100)
     portal = models.ForeignKey("Portal", on_delete=models.CASCADE)
+    posted_at = models.DateField(null=True, blank=True)
 
 
 class Portal(models.Model):

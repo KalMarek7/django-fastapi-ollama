@@ -16,5 +16,14 @@ admin.site.register(Portal)
 
 @admin.register(JobListing)
 class JobListingAdmin(admin.ModelAdmin):
-    # Columns to show in the list view
-    list_display = ("company", "portal", "title")
+    # Columns to show in the list view,
+    list_display = (
+        "title",
+        "company",
+        "years_of_experience",
+        "salary",
+        "portal",
+        "expiry_date",
+        "posted_at",
+    )
+    #

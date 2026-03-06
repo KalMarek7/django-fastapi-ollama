@@ -26,7 +26,9 @@ class JobListingSchema(BaseModel):
     url: Optional[HttpUrl] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
-    score: Optional[float] = None
+    years_of_experience: Optional[int] = None
+    salary: Optional[str] = None
+    posted_at: Optional[date] = None
 
     class Config:
         from_attributes = True
@@ -82,7 +84,26 @@ class BaseScraper:
                     soup = BeautifulSoup(response.content, "html.parser")
                     return self._clean_html_content(soup, self.portal)
                 elif self.portal == "JustJoinIT":
-                    soup = BeautifulSoup(response.json()["body"], "html.parser")
+                    json_response = response.json()
+                    logger.debug(json_response)
+                    for key in json_response["employmentTypes"]:
+                        if key["currency"] == "PLN":
+                            logger.debug("Found salary: %s", key)
+                            json_response["salary"] = (
+                                f"from {key['from']} to {key['to']} PLN"
+                            )
+                            break
+                    logger.debug("SALARY: %s", json_response["salary"])
+                    smashed = (
+                        json_response["body"]
+                        + f"<p>{json_response['title']}</p>"
+                        + f"<p>{json_response['companyName']}</p>"
+                        + f"<p>expires at: {json_response['expiredAt']}</p>"
+                        + f"<p>published at: {json_response['publishedAt']}</p>"
+                        + f"<p>salary: {json_response['salary']}</p>"
+                    )
+                    logger.debug("smashed: %s", smashed)
+                    soup = BeautifulSoup(smashed, "html.parser")
                     return self._clean_html_content(soup, self.portal)
                 elif self.portal == "theprotocol.it":
                     soup = BeautifulSoup(response.content, "html.parser")
@@ -109,6 +130,9 @@ class BaseScraper:
         junk_tags = ["svg", "script", "style", "button", "img"]
         if portal_name == "theprotocol.it":
             junk_tags.append("a")
+            junk_tags.append("div")
+        if portal_name == "Pracuj.pl":
+            junk_tags.append("div")
 
         target = soup_target
         if portal_name in container_mapping:
@@ -118,7 +142,33 @@ class BaseScraper:
                 target = container
 
         for junk in target.find_all(junk_tags):
-            junk.decompose()
+            if portal_name == "theprotocol.it":
+                if junk.name == "div":
+                    apply_section = target.find("div", {"data-test": "section-apply"})
+                    if apply_section:
+                        logger.debug("Found apply section")
+                        apply_section.decompose()
+                    question_section = target.find(
+                        "div", {"data-test": "section-question"}
+                    )
+                    if question_section:
+                        logger.debug("Found question section")
+                        question_section.decompose()
+                else:
+                    junk.decompose()
+            elif portal_name == "Pracuj.pl":
+                if junk.name == "div":
+                    quick_apply_section = target.find(
+                        "div", {"id": "offer-apply-panel"}
+                    )
+                    logger.debug("quick apply section: %s", quick_apply_section)
+                    if quick_apply_section:
+                        logger.debug("Found apply section")
+                        quick_apply_section.decompose()
+                else:
+                    junk.decompose()
+
+        logger.debug("Cleaned HTML: %s", target)
 
         return target.getText("\n")
 
@@ -301,7 +351,7 @@ def get_listings_details(job_listing: JobListingSchema, system_instruction: str)
         RuntimeError: If there is an error calling the Gemini API.
     """
     logger.debug("Starting get_listings_details() to gemma model")
-    sleep(1)
+    sleep(8)
     api_key = os.environ.get("GOOGLE_API_KEY")
     if not api_key:
         raise ValueError("Google API key is missing.")

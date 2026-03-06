@@ -91,6 +91,9 @@ def _process_job_listing(job_listing_url: str, scraper) -> None:
             title=jls.title,
             expiry_date=jls.expiry_date,
             company=jls.company,
+            salary=jls.salary,
+            years_of_experience=jls.years_of_experience,
+            posted_at=jls.posted_at,
         )
 
 
@@ -98,14 +101,14 @@ def _scrape_portal(scraper) -> None:
     job_listings = scraper.get_all_listings()
     logger.info("%s items found for %s", len(job_listings), scraper)
 
-    for job_listing in job_listings[10:15]:
+    for job_listing in job_listings:
         _process_job_listing(job_listing, scraper)
 
 
 def _get_scraper_for_portal(url: str, portal: str):
     portal_map = {
-        "Pracuj.pl": PracujplScraper,
         "JustJoinIT": JustJoinITScraper,
+        "Pracuj.pl": PracujplScraper,
         "theprotocol.it": TheProtocolITScraper,
     }
     scraper_class = portal_map.get(portal)
