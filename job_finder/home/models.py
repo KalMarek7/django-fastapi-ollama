@@ -3,7 +3,7 @@ from django.db import models
 
 # Create your models here.
 class JobListing(models.Model):
-    title = models.CharField(null=True, blank=True, max_length=100)
+    title = models.CharField(null=True, blank=True, max_length=200)
     text_content = models.TextField()
     expiry_date = models.DateField(
         null=True,
@@ -15,9 +15,9 @@ class JobListing(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    company = models.CharField(null=True, blank=True, max_length=100)
+    company = models.CharField(null=True, blank=True, max_length=200)
     years_of_experience = models.IntegerField(null=True, blank=True, verbose_name="YoE")
-    salary = models.CharField(null=True, blank=True, max_length=100)
+    salary = models.CharField(null=True, blank=True, max_length=200)
     portal = models.ForeignKey("Portal", on_delete=models.CASCADE)
     posted_at = models.DateField(null=True, blank=True)
 

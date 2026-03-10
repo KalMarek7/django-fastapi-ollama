@@ -9,10 +9,15 @@ from typing import Optional
 
 import httpx
 from bs4 import BeautifulSoup, Tag
-from google import genai
-from google.api_core import exceptions
-from google.genai import types
+from ollama import Client, ResponseError
 from pydantic import BaseModel, Field, HttpUrl
+from tenacity import (
+    before_sleep_log,
+    retry,
+    retry_if_exception_type,
+    stop_after_attempt,
+    wait_fixed,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +39,15 @@ class JobListingSchema(BaseModel):
         from_attributes = True
 
 
+class JobExtractionSchema(BaseModel):
+    title: Optional[str]
+    company: Optional[str]
+    salary: Optional[str]
+    years_of_experience: Optional[int]
+    posted_at: Optional[date]
+    expiry_date: Optional[date]
+
+
 class BaseScraper:
     def __init__(self, url: str, portal: str):
         self.url = url
@@ -51,6 +65,12 @@ class BaseScraper:
             )
             self.user_agents = {"user_agents": [{"string": "Mozilla/5.0"}]}  # Fallback
 
+    @retry(
+        stop=stop_after_attempt(5),
+        wait=wait_fixed(3),
+        retry=retry_if_exception_type((httpx.HTTPStatusError, httpx.RequestError)),
+        before_sleep=before_sleep_log(logger, logging.INFO),
+    )
     def get_data(
         self,
         url: str | None = None,
@@ -215,8 +235,19 @@ class PracujplScraper(BaseScraper):
                     div_cnt = soup.find_all("div", attrs={"data-test": "default-offer"})
                     all_offers.extend(div_cnt)
 
-            all_offers_urls = [offer.find("a").get("href") for offer in all_offers]
-            logger.debug("Total offers collected: %s", len(all_offers_urls))
+            all_offers_urls = []
+            for offer in all_offers:
+                a_tag = offer.find("a")
+                # 1. Check if <a> exists
+                # 2. Extract href safely
+                # 3. Check if it starts with the correct domain
+                if (
+                    a_tag
+                    and (url := a_tag.get("href"))
+                    and url.startswith("https://www.pracuj.pl/praca/")
+                ):
+                    all_offers_urls.append(url)
+            logger.info("Total offers collected: %s", len(all_offers_urls))
             # print(all_offers_urls)
 
             return all_offers_urls
@@ -336,6 +367,12 @@ class NoFluffJobsScraper(BaseScraper):
         return []
 
 
+@retry(
+    stop=stop_after_attempt(5),
+    wait=wait_fixed(3),
+    retry=retry_if_exception_type((httpx.RequestError, OSError)),
+    before_sleep=before_sleep_log(logger, logging.INFO),
+)
 def get_listings_details(job_listing: JobListingSchema, system_instruction: str):
     """
     Processes a receipt image using the Gemini API and returns a list of items.
@@ -350,37 +387,51 @@ def get_listings_details(job_listing: JobListingSchema, system_instruction: str)
         ValueError: If the API key is not configured.
         RuntimeError: If there is an error calling the Gemini API.
     """
-    logger.debug("Starting get_listings_details() to gemma model")
-    sleep(8)
-    api_key = os.environ.get("GOOGLE_API_KEY")
-    if not api_key:
-        raise ValueError("Google API key is missing.")
-
-    client = genai.Client(api_key=api_key)
+    logger.info("DEBUG: LLM - Starting get_listings_details() to ollama model")
+    current_date = datetime.now().strftime("%A, %B %d, %Y")
+    client = Client(host=os.getenv("OLLAMA_URL"), timeout=120)
+    # sleep(8)
     try:
-        response = client.models.generate_content(
-            model="gemma-3-27b-it",
-            contents=[
-                types.Part.from_text(text=system_instruction),
-                types.Part.from_text(text=job_listing.text_content),  # type: ignore
+        # Call the local Ollama instance
+        logger.debug("Sending chat request to Ollama with model: %s", "llama3.2")
+        response = client.chat(
+            model="llama3.2",  # Specify your pulled Ollama model here
+            messages=[
+                {
+                    "role": "system",
+                    "content": f"### Context: today is {current_date}.\n\n{system_instruction}",
+                },
+                {"role": "user", "content": job_listing.text_content},
             ],
+            stream=False,  # Instructs Ollama to output standard JSON
+            format=JobExtractionSchema.model_json_schema(),
         )
-        if response.text:
-            logger.info("LLM raw response: %s", response.text)
+
+        # Extract the text content from the Ollama response
+        response_text = response.get("message", {}).get("content", "")
+
+        if response_text:
+            logger.info("LLM raw response: %s", response_text)
+
+            """             # Clean up potential Markdown formatting, just in case
             clean_json = (
-                response.text.replace("```json", "")
+                response_text.replace("```json", "")
                 .replace("```", "")
                 .replace("None", "null")
                 .replace("\n", "")
                 .strip()
-            )
-            data = json.loads(clean_json)
+            ) 
+"""
+
+            data = json.loads(response_text)
             logger.info("LLM clean data: %s", data)
 
             # This returns the validated Pydantic object
             return JobListingSchema(**data)
+
         return ""
-    except (exceptions.GoogleAPICallError, exceptions.RetryError) as e:
-        raise RuntimeError(f"Error calling Gemini API: {e}") from e
+
+    except ResponseError as e:
+        raise RuntimeError(f"Error calling Ollama API: {e}") from e
     except json.JSONDecodeError as e:
-        raise RuntimeError(f"Error decoding JSON response from Gemini API: {e}") from e
+        raise RuntimeError(f"Error decoding JSON response from Ollama API: {e}") from e

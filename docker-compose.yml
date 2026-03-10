@@ -12,6 +12,28 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+      
+    # --- Local LLM Engine ---
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    container_name: ollama
+    restart: unless-stopped
+    volumes:
+      - ollama_storage:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+      - OLLAMA_KEEP_ALIVE=24h        # Keep model in VRAM for instant background processing
+      - OLLAMA_MAX_LOADED_MODELS=1   # Limits VRAM usage to one model at a time
+      - OLLAMA_NUM_PARALLEL=1        # Prevents GPU spikes that cause desktop lag
 
   fastapi_service:
     build: ./fastapi_app
@@ -23,9 +45,13 @@ services:
       - ./media:/app/media  # Shared volume for PDFs
     env_file:
       - .env
+    environment:
+      - OLLAMA_URL=http://ollama:11434
     depends_on:
       db:
         condition: service_healthy
+      ollama:
+        condition: service_started
 
   django:
     build: ./job_finder
@@ -45,3 +71,4 @@ services:
 
 volumes:
   postgres_data:
+  ollama_storage:

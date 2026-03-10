@@ -11,7 +11,9 @@ dependencies = [
     "fastapi>=0.129.0",
     "httpx>=0.28.1",
     "psycopg2-binary>=2.9.11",
-    "google-api-core",
-    "google-genai",
+    # "google-api-core",
+    # "google-genai",
     "pydantic",
+    "tenacity",
+    "ollama>=0.6.1",
 ]

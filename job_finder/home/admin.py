@@ -1,4 +1,7 @@
+import csv
+
 from django.contrib import admin
+from django.http import HttpResponse
 
 from .models import JobListing, Portal, SystemInstruction
 
@@ -14,10 +17,26 @@ class SystemInstructionAdmin(admin.ModelAdmin):
 admin.site.register(Portal)
 
 
+@admin.action(description="Export selected jobs to CSV")
+def export_as_csv(modeladmin, request, queryset):
+    response = HttpResponse(content_type="text/csv")
+    response["Content-Disposition"] = 'attachment; filename="jobs.csv"'
+
+    writer = csv.writer(response)
+    # Headers
+    writer.writerow([i for i in modeladmin.list_display])
+
+    for job in queryset:
+        writer.writerow([getattr(job, i) for i in modeladmin.list_display])
+
+    return response
+
+
 @admin.register(JobListing)
 class JobListingAdmin(admin.ModelAdmin):
     # Columns to show in the list view,
     list_display = (
+        "pk",
         "title",
         "company",
         "years_of_experience",
@@ -25,5 +44,6 @@ class JobListingAdmin(admin.ModelAdmin):
         "portal",
         "expiry_date",
         "posted_at",
+        "url",
     )
-    #
+    actions = [export_as_csv]

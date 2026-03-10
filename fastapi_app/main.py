@@ -97,12 +97,18 @@ def _process_job_listing(job_listing_url: str, scraper) -> None:
         )
 
 
-def _scrape_portal(scraper) -> None:
+def _scrape_portal(scraper) -> bool:
     job_listings = scraper.get_all_listings()
     logger.info("%s items found for %s", len(job_listings), scraper)
 
+    errors_occurred = False
     for job_listing in job_listings:
-        _process_job_listing(job_listing, scraper)
+        try:
+            _process_job_listing(job_listing, scraper)
+        except Exception as e:
+            logger.error("Error processing job listing %s: %s", job_listing, e)
+            errors_occurred = True
+    return errors_occurred
 
 
 def _get_scraper_for_portal(url: str, portal: str):
@@ -123,6 +129,8 @@ def perform_scraping_task(
     target_portal: Optional[str] = None,
 ):
     logger.info("Task %s is EXECUTING now...", task_id)
+    errors_occurred = False
+    task_record = None
     try:
         logger.info("Starting task...")
         task_record = _get_task_record(task_id)
@@ -130,7 +138,11 @@ def perform_scraping_task(
         if target_url is not None and target_portal is not None:
             logger.info("Scraping single URL: %s from %s", target_url, target_portal)
             scraper = _get_scraper_for_portal(target_url, target_portal)
-            _process_job_listing(target_url, scraper)
+            try:
+                _process_job_listing(target_url, scraper)
+            except Exception as e:
+                logger.error("Error processing job listing %s: %s", target_url, e)
+                errors_occurred = True
         else:
             scrapers = [
                 PracujplScraper(
@@ -147,18 +159,21 @@ def perform_scraping_task(
             ]
 
             for scraper in scrapers:
-                _scrape_portal(scraper)
+                if _scrape_portal(scraper):
+                    errors_occurred = True
 
-        task_record.status = "completed"
+        task_record.status = (
+            "completed" if not errors_occurred else "completed_with_errors"
+        )
         task_record.save()
-        logger.info("Task %s completed successfully.", task_id)
+        logger.info("Task %s completed.", task_id)
     except ValueError:
         pass
     except Exception as e:
-        try:
+        if task_record:
             task_record.status = "failed"
             task_record.save()
-        except UnboundLocalError:
+        else:
             logger.error(
                 "Task %s failed before task_record could be created: %s", task_id, e
             )

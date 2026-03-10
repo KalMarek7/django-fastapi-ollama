@@ -8,13 +8,14 @@ TASK_STATUS_CHOICES = (
     ("in_progress", "In Progress"),
     ("completed", "Completed"),
     ("failed", "Failed"),
+    ("completed_with_errors", "Completed with Errors"),
 )
 
 
 class Task(models.Model):
     task_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     status = models.CharField(
-        max_length=15, choices=TASK_STATUS_CHOICES, default="pending"
+        max_length=50, choices=TASK_STATUS_CHOICES, default="pending"
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
