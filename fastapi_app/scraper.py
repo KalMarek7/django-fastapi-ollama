@@ -1,16 +1,14 @@
 import json
 import logging
-import os
 import random
-from datetime import date, datetime
 from pathlib import Path
 from time import sleep
 from typing import Optional
 
 import httpx
 from bs4 import BeautifulSoup, Tag
-from ollama import Client, ResponseError
-from pydantic import BaseModel, Field, HttpUrl
+from llm import generate_matching_prompt, make_llm_call
+from schemas import JobExtractionSchema, JobListingSchema, JobMatchAssessment
 from tenacity import (
     before_sleep_log,
     retry,
@@ -20,32 +18,6 @@ from tenacity import (
 )
 
 logger = logging.getLogger(__name__)
-
-
-class JobListingSchema(BaseModel):
-    title: Optional[str] = Field(None, max_length=100)
-    company: Optional[str] = Field(None, max_length=100)
-    text_content: Optional[str] = None
-    portal_id: Optional[int] = None
-    expiry_date: Optional[date] = None
-    url: Optional[HttpUrl] = None
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
-    years_of_experience: Optional[int] = None
-    salary: Optional[str] = None
-    posted_at: Optional[date] = None
-
-    class Config:
-        from_attributes = True
-
-
-class JobExtractionSchema(BaseModel):
-    title: Optional[str]
-    company: Optional[str]
-    salary: Optional[str]
-    years_of_experience: Optional[int]
-    posted_at: Optional[date]
-    expiry_date: Optional[date]
 
 
 class BaseScraper:
@@ -388,50 +360,16 @@ def get_listings_details(job_listing: JobListingSchema, system_instruction: str)
         RuntimeError: If there is an error calling the Gemini API.
     """
     logger.info("DEBUG: LLM - Starting get_listings_details() to ollama model")
-    current_date = datetime.now().strftime("%A, %B %d, %Y")
-    client = Client(host=os.getenv("OLLAMA_URL"), timeout=120)
-    # sleep(8)
-    try:
-        # Call the local Ollama instance
-        logger.debug("Sending chat request to Ollama with model: %s", "llama3.2")
-        response = client.chat(
-            model="llama3.2",  # Specify your pulled Ollama model here
-            messages=[
-                {
-                    "role": "system",
-                    "content": f"### Context: today is {current_date}.\n\n{system_instruction}",
-                },
-                {"role": "user", "content": job_listing.text_content},
-            ],
-            stream=False,  # Instructs Ollama to output standard JSON
-            format=JobExtractionSchema.model_json_schema(),
-        )
+    text_content = job_listing.text_content if job_listing.text_content else ""
+    data = make_llm_call((system_instruction, text_content), JobExtractionSchema)
+    return JobListingSchema(**data)
 
-        # Extract the text content from the Ollama response
-        response_text = response.get("message", {}).get("content", "")
 
-        if response_text:
-            logger.info("LLM raw response: %s", response_text)
-
-            """             # Clean up potential Markdown formatting, just in case
-            clean_json = (
-                response_text.replace("```json", "")
-                .replace("```", "")
-                .replace("None", "null")
-                .replace("\n", "")
-                .strip()
-            ) 
-"""
-
-            data = json.loads(response_text)
-            logger.info("LLM clean data: %s", data)
-
-            # This returns the validated Pydantic object
-            return JobListingSchema(**data)
-
-        return ""
-
-    except ResponseError as e:
-        raise RuntimeError(f"Error calling Ollama API: {e}") from e
-    except json.JSONDecodeError as e:
-        raise RuntimeError(f"Error decoding JSON response from Ollama API: {e}") from e
+def analyze_job_fit(job_instance: JobListingSchema, resume_pl, resume_en):
+    """
+    Analyzes a Django JobListing against a resume using Ollama.
+    """
+    prompts = generate_matching_prompt(job_instance, resume_pl, resume_en)
+    data = make_llm_call(prompts, JobMatchAssessment)
+    # This returns the validated Pydantic object
+    return JobMatchAssessment(**data)

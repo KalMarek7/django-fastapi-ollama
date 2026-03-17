@@ -1,0 +1,6 @@
+2026-03-16 15:24:29,521 - ERROR - Error processing job listing 417. https://justjoin.it/api/candidate-api/offers/itds-python-developer-wroclaw-python: 1 validation error for JobListingSchema
+title
+  String should have at most 100 characters [type=string_too_long, input_value='Empower the Future of Tr...ic Financial Ecosystem!', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.12/v/string_too_long
+2026-03-16 15:37:55,910 - ERROR - Error processing job listing 80. https://theprotocol.it/filtry/python;t/backend;sp/praca/specjalista---specjalistka-ds-rozwiazan-biznesowych-i-automatyzacji-bolechowo-pow-poznanski-obornicka-46,oferta,a4eb0000-0ccd-1619-9776-08de7b688ca3: value too long for type character varying(200)
+

@@ -38,3 +38,22 @@ class SystemInstruction(models.Model):
     instruction = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+
+class Resume(models.Model):
+    name = models.CharField(max_length=100)
+    text_content = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+
+class JobMatch(models.Model):
+    # resume = models.ForeignKey('Resume', on_delete=models.CASCADE)
+    job_listing = models.ForeignKey("JobListing", on_delete=models.CASCADE)
+    llm_output = models.JSONField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        # Prevent duplicate analysis for the same resume/job pair
+        unique_together = ["job_listing"]
+        verbose_name_plural = "Job matches"

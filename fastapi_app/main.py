@@ -1,24 +1,31 @@
 import logging
 import os
 import uuid
+from datetime import datetime
 from typing import Optional
 
 import django
 from asgiref.sync import sync_to_async
 from fastapi import BackgroundTasks, FastAPI
 from pydantic import BaseModel, Field, HttpUrl, model_validator
+from schemas import JobListingSchema
 
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
-
 logger = logging.getLogger(__name__)
+error_file_handler = logging.FileHandler("error_log.txt")
+error_file_handler.setLevel(logging.ERROR)  # Only capture ERROR and CRITICAL
+file_format = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+error_file_handler.setFormatter(file_format)
+logger.addHandler(error_file_handler)
+
 from scraper import (  # noqa: E402, F401
-    JobListingSchema,
     JustJoinITScraper,
     PracujplScraper,
     TheProtocolITScraper,
+    analyze_job_fit,
     get_listings_details,
 )
 
@@ -43,7 +50,9 @@ app = FastAPI(
 )
 from home.models import (  # type: ignore # noqa: E402
     JobListing,
+    JobMatch,
     Portal,
+    Resume,
     SystemInstruction,
 )
 from tasks.models import Task  # type: ignore # noqa: E402
@@ -81,19 +90,19 @@ def _process_job_listing(job_listing_url: str, scraper) -> None:
         },
     )
     logger.debug("Done with scraping. Starting LLM...")
-
-    jls = get_listings_details(
+    prompts = f"### Context: today is {datetime.now().strftime('%A, %B %d, %Y')}.\n\n{SystemInstruction.objects.get(pk=1).instruction}"
+    listing_details = get_listings_details(
         JobListingSchema.model_validate(obj),
-        SystemInstruction.objects.get(pk=1).instruction,
+        prompts,
     )
-    if isinstance(jls, JobListingSchema):
+    if isinstance(listing_details, JobListingSchema):
         JobListing.objects.filter(url=job_listing_url).update(
-            title=jls.title,
-            expiry_date=jls.expiry_date,
-            company=jls.company,
-            salary=jls.salary,
-            years_of_experience=jls.years_of_experience,
-            posted_at=jls.posted_at,
+            title=listing_details.title,
+            expiry_date=listing_details.expiry_date,
+            company=listing_details.company,
+            salary=listing_details.salary,
+            years_of_experience=listing_details.years_of_experience,
+            posted_at=listing_details.posted_at,
         )
 
 
@@ -102,11 +111,15 @@ def _scrape_portal(scraper) -> bool:
     logger.info("%s items found for %s", len(job_listings), scraper)
 
     errors_occurred = False
-    for job_listing in job_listings:
+    for index, job_listing in enumerate(job_listings):
         try:
+            logger.info("%i. Processing job listing %s", index, job_listing)
+            # logger.info("%i %s", index, job_listing)
             _process_job_listing(job_listing, scraper)
         except Exception as e:
-            logger.error("Error processing job listing %s: %s", job_listing, e)
+            logger.error(
+                "Error processing job listing %i. %s: %s", index, job_listing, e
+            )
             errors_occurred = True
     return errors_occurred
 
@@ -202,8 +215,8 @@ class ScrapeRequest(BaseModel):
         return self
 
 
-@app.post("/tasks/schedule")
-async def schedule_task(
+@app.post("/tasks/schedule-scraping")
+async def schedule_scraping_task(
     payload: Optional[ScrapeRequest] = None,
     background_tasks: BackgroundTasks = BackgroundTasks(),
 ):
@@ -230,11 +243,72 @@ async def schedule_task(
     await sync_to_async(Task.objects.create)(task_id=task_id, status="pending")
     background_tasks.add_task(perform_scraping_task, task_id, target_url, target_portal)
     logger.info("Job %s scheduled", task_id)
-    return {
-        "task_id": str(task_id),
-        "message": "Task started in background",
-        "status_url": f"/tasks/status/{task_id}",
-    }
+    return TaskScheduleResponse(
+        task_id=str(task_id),
+        message="Task started in background",
+        status_url=f"/tasks/status/{task_id}",
+    )
+
+
+async def perform_matching_task(task_id: uuid.UUID):
+    logger.info("Matching Task %s is EXECUTING now...", task_id)
+    errors_occurred = False
+    task_record = None
+    try:
+        task_record = await sync_to_async(_get_task_record)(task_id)
+        resume_pl = await sync_to_async(Resume.objects.get)(pk=1)
+        resume_en = await sync_to_async(Resume.objects.get)(pk=2)
+
+        def fetch_jobs():
+            return list(JobListing.objects.all())
+
+        all_jobs = await sync_to_async(fetch_jobs, thread_sensitive=False)()
+        result = []
+        for job in all_jobs:
+            try:
+                llm_output = analyze_job_fit(
+                    job, resume_pl.text_content, resume_en.text_content
+                ).model_dump()
+                await sync_to_async(JobMatch.objects.update_or_create)(
+                    job_listing=job, llm_output=llm_output
+                )
+                result.append(llm_output)
+            except Exception as e:
+                logger.error("Error processing job match for job %s: %s", job.pk, e)
+                errors_occurred = True
+        task_record.status = (
+            "completed" if not errors_occurred else "completed_with_errors"
+        )
+        await sync_to_async(task_record.save)()
+        logger.info("Matching Task %s completed.", task_id)
+    except ValueError:
+        pass
+    except Exception as e:
+        if task_record:
+            task_record.status = "failed"
+            await sync_to_async(task_record.save)()
+        else:
+            logger.error(
+                "Matching Task %s failed before task_record could be created: %s",
+                task_id,
+                e,
+            )
+        logger.error("Matching Task %s failed: %s", task_id, e)
+
+
+@app.post("/tasks/schedule-matching", response_model=TaskScheduleResponse)
+async def schedule_matching_task(
+    background_tasks: BackgroundTasks = BackgroundTasks(),
+):
+    task_id = uuid.uuid4()
+    await sync_to_async(Task.objects.create)(task_id=task_id, status="pending")
+    background_tasks.add_task(perform_matching_task, task_id)
+    logger.info("Matching Job %s scheduled", task_id)
+    return TaskScheduleResponse(
+        task_id=str(task_id),
+        message="Matching task started in background",
+        status_url=f"/tasks/status/{task_id}",
+    )
 
 
 @app.get("/tasks/status/{task_id}", tags=["Scraping Tasks"])
