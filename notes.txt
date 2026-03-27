@@ -1,21 +1,12 @@
 npx @tailwindcss/cli -i ./job_finder/static/src/input.css -o ./job_finder/static/css/output.css --watch
 
-# TODO:
-[X] accept url and portal to process just inidividual JobListing
-[X] review justjoinit for missing content
-[ ] handle 503 to wait and retry
-    fastapi_service-1  | 2026-03-06 15:40:12,318 - main - ERROR - Task d2a11b34-f1b3-4107-8036-9f14cb5fc75d failed: 503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.', 'status': 'UNAVAILABLE'}}
+ollama pull llama3.2
+ollama pull qwen2.5:7bo
 
-scraper [231] 
-
-all_offers_urls = [
-    offer.find("a").get("href") 
-    for offer in all_offers 
-    if offer.find("a") and not offer.find("a").get("href").startswith("https://pracodawcy")
-]
-
-
-ollama pull qwen2.5:7b
-
-date
-write to file at line 180 most likely in main.py
+"""
+With Option 1 (API-First Decoupling):
+*   FastAPI would handle the scraping logic and any initial parsing of the job listing data (e.g., in scraper.py and llm.py).
+*   Once FastAPI has processed a job listing, it would then make an HTTP POST request (e.g., using httpx) to a new API endpoint in the Django application.
+*   Django would expose this API endpoint (e.g., /api/job-listings/create/) which would contain the logic for inserting the job listing into its database using Django's ORM (JobListing.objects.create or update_or_create).
+In essence: FastAPI fetches and prepares the data, and Django receives and stores the data via its own API.
+"""

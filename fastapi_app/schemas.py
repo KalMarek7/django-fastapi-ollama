@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from typing import List, Optional
 
-from pydantic import BaseModel, Field, HttpUrl
+from pydantic import BaseModel, Field, HttpUrl, field_validator, model_validator
 
 
 class JobListingSchema(BaseModel):
@@ -22,12 +22,20 @@ class JobListingSchema(BaseModel):
 
 
 class JobExtractionSchema(BaseModel):
-    title: Optional[str]
-    company: Optional[str]
-    salary: Optional[str]
-    years_of_experience: Optional[int]
-    posted_at: Optional[date]
-    expiry_date: Optional[date]
+    title: Optional[str] = Field(None, max_length=100)
+    company: Optional[str] = Field(None, max_length=100)
+    years_of_experience: Optional[int] = None
+    salary: Optional[str] = None
+    expiry_date: Optional[date] = None
+    posted_at: Optional[date] = None
+
+    @field_validator("expiry_date", "posted_at", mode="before")
+    @classmethod
+    def parse_iso_date(cls, v):
+        if isinstance(v, str) and v:
+            # Splits "2026-04-17T09:21..." at the 'T' and takes the first part
+            return v.split("T")[0]
+        return v
 
 
 class JobMatchAssessment(BaseModel):
@@ -36,3 +44,33 @@ class JobMatchAssessment(BaseModel):
     skill_alignment: List[str]
     missing_criteria: List[str]
     verdict: str
+
+
+class TaskScheduleResponse(BaseModel):
+    task_id: str = Field(..., examples=["550e8400-e29b-41d4-a716-446655440000"])
+    message: str = Field(..., examples=["Task started in background"])
+    status_url: str = Field(
+        ..., examples=["/tasks/status/550e8400-e29b-41d4-a716-446655440000"]
+    )
+
+
+class ScrapeRequest(BaseModel):
+    url: Optional[HttpUrl] = Field(
+        None,
+        description="The specific job listing URL. **If provided, 'portal' must also be provided.**",
+        examples=["https://theprotocol.it/filtry/python;t/backend;sp"],
+    )
+    portal: Optional[str] = Field(
+        None,
+        description="The name of the portal (e.g., 'JustJoinIT'). **Required if 'url' is provided.**",
+        examples=["theprotocol.it"],
+    )
+
+    @model_validator(mode="after")
+    def check_both_or_none(self) -> "ScrapeRequest":
+        # Check if one is present but the other isn't
+        if bool(self.url) != bool(self.portal):
+            raise ValueError(
+                "You must provide both 'url' and 'portal', or leave both empty."
+            )
+        return self

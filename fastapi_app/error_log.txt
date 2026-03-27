@@ -4,3 +4,52 @@ title
     For further information visit https://errors.pydantic.dev/2.12/v/string_too_long
 2026-03-16 15:37:55,910 - ERROR - Error processing job listing 80. https://theprotocol.it/filtry/python;t/backend;sp/praca/specjalista---specjalistka-ds-rozwiazan-biznesowych-i-automatyzacji-bolechowo-pow-poznanski-obornicka-46,oferta,a4eb0000-0ccd-1619-9776-08de7b688ca3: value too long for type character varying(200)
 
+2026-03-25 12:09:35,522 - ERROR - Error processing job listing 81. https://theprotocol.it/filtry/python;t/backend;sp/praca/specjalista---specjalistka-ds-rozwiazan-biznesowych-i-automatyzacji-bolechowo-pow-poznanski-obornicka-46,oferta,a4eb0000-0ccd-1619-9776-08de7b688ca3: value too long for type character varying(200)
+
+2026-03-25 14:01:58,762 - ERROR - Error processing job listing 85. https://theprotocol.it/filtry/python;t/backend;sp/praca/specjalista---specjalistka-ds-rozwiazan-biznesowych-i-automatyzacji-bolechowo-pow-poznanski-obornicka-46,oferta,a4eb0000-0ccd-1619-9776-08de7b688ca3: value too long for type character varying(200)
+
+2026-03-27 08:33:03,163 - ERROR - Error processing job listing https://justjoin.it/job-offer/c-f-python-developer-warszawa-python: Expecting value: line 1 column 1 (char 0)
+2026-03-27 08:35:37,339 - ERROR - Error processing job listing https://justjoin.it/job-offer/c-f-python-developer-warszawa-python: Expecting value: line 1 column 1 (char 0)
+2026-03-27 08:45:21,311 - ERROR - Error processing job listing https://justjoin.it/api/candidate-api/offers?c-f-python-developer-warszawa-python: 'employmentTypes'
+2026-03-27 08:47:15,427 - ERROR - Error processing job listing https://justjoin.it/api/candidate-api/offers/c-f-python-developer-warszawa-python: Error calling Ollama API: 404 page not found
+2026-03-27 08:48:50,935 - ERROR - Error processing job listing https://justjoin.it/api/candidate-api/offers/c-f-python-developer-warszawa-python: Error calling Ollama API: Error code: 404 - {'error': {'message': "model 'llama3.2' not found", 'type': 'api_error', 'param': None, 'code': None}}
+2026-03-27 09:01:46,838 - ERROR - Error processing job listing https://justjoin.it/api/candidate-api/offers/c-f-python-developer-warszawa-python: schemas.JobListingSchema() argument after ** must be a mapping, not NoneType
+2026-03-27 09:06:16,653 - ERROR - Error processing job listing https://justjoin.it/api/candidate-api/offers/c-f-python-developer-warszawa-python: schemas.JobListingSchema() argument after ** must be a mapping, not NoneType
+2026-03-27 09:08:25,436 - ERROR - Error processing job listing https://justjoin.it/api/candidate-api/offers/c-f-python-developer-warszawa-python: schemas.JobListingSchema() argument after ** must be a mapping, not str
+2026-03-27 09:09:39,039 - ERROR - Error processing job listing https://justjoin.it/api/candidate-api/offers/c-f-python-developer-warszawa-python: 'str' object has no attribute 'read'
+2026-03-27 09:10:01,223 - ERROR - Error processing job listing https://justjoin.it/api/candidate-api/offers/c-f-python-developer-warszawa-python: 1 validation error for JobListingSchema
+expiry_date
+  Datetimes provided to dates should have zero time - e.g. be exact dates [type=date_from_datetime_inexact, input_value='2026-04-17T09:21:26.614612Z', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.12/v/date_from_datetime_inexact
+2026-03-27 09:12:33,230 - ERROR - Error processing job listing https://justjoin.it/api/candidate-api/offers/c-f-python-developer-warszawa-python: 2 validation errors for JobListingSchema
+expiry_date
+  Datetimes provided to dates should have zero time - e.g. be exact dates [type=date_from_datetime_inexact, input_value='2026-04-17T09:21:26.614612Z', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.12/v/date_from_datetime_inexact
+posted_at
+  Datetimes provided to dates should have zero time - e.g. be exact dates [type=date_from_datetime_inexact, input_value='2026-03-26T10:00:21.762683Z', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.12/v/date_from_datetime_inexact
+2026-03-27 09:13:40,273 - ERROR - Error processing job listing https://justjoin.it/api/candidate-api/offers/c-f-python-developer-warszawa-python: 2 validation errors for JobListingSchema
+expiry_date
+  Datetimes provided to dates should have zero time - e.g. be exact dates [type=date_from_datetime_inexact, input_value='2026-04-17T09:21:26.614612Z', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.12/v/date_from_datetime_inexact
+posted_at
+  Datetimes provided to dates should have zero time - e.g. be exact dates [type=date_from_datetime_inexact, input_value='2026-03-26T10:00:21.762683Z', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.12/v/date_from_datetime_inexact
+2026-03-27 09:15:22,409 - ERROR - Error processing job listing https://justjoin.it/api/candidate-api/offers/c-f-python-developer-warszawa-python: 2 validation errors for JobListingSchema
+expiry_date
+  Datetimes provided to dates should have zero time - e.g. be exact dates [type=date_from_datetime_inexact, input_value='2026-04-17T09:21:26.614612Z', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.12/v/date_from_datetime_inexact
+posted_at
+  Datetimes provided to dates should have zero time - e.g. be exact dates [type=date_from_datetime_inexact, input_value='2026-03-26T10:00:21.762683Z', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.12/v/date_from_datetime_inexact
+2026-03-27 09:19:49,070 - ERROR - Error processing job listing https://justjoin.it/api/candidate-api/offers/c-f-python-developer-warszawa-python: 2 validation errors for JobListingSchema
+expiry_date
+  Datetimes provided to dates should have zero time - e.g. be exact dates [type=date_from_datetime_inexact, input_value='2026-04-17T09:21:26.614612Z', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.12/v/date_from_datetime_inexact
+posted_at
+  Datetimes provided to dates should have zero time - e.g. be exact dates [type=date_from_datetime_inexact, input_value='2026-03-26T10:00:21.762683Z', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.12/v/date_from_datetime_inexact
+2026-03-27 11:26:27,869 - ERROR - Error processing job listing 21. https://www.pracuj.pl/praca/java-python-developer-warszawa,oferta,1004681961: Request timed out.
+2026-03-27 12:04:32,100 - ERROR - Error processing job listing 25. https://www.pracuj.pl/praca/java-python-developer-warszawa,oferta,1004681961: Request timed out.
+2026-03-27 13:32:54,269 - ERROR - Error processing job listing 90. https://theprotocol.it/filtry/python;t/backend;sp/praca/specjalista---specjalistka-ds-rozwiazan-biznesowych-i-automatyzacji-bolechowo-pow-poznanski-obornicka-46,oferta,a4eb0000-0ccd-1619-9776-08de7b688ca3: value too long for type character varying(200)
+

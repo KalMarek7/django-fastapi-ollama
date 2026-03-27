@@ -2,7 +2,8 @@ import json
 import logging
 import os
 
-from ollama import Client, ResponseError
+from openai import APIStatusError, Client
+from pydantic import BaseModel
 from schemas import JobListingSchema
 
 logger = logging.getLogger(__name__)
@@ -23,7 +24,7 @@ def generate_matching_prompt(
     # 2. Construct the specialized Prompt
     system_prompt = (
         "You are a strict and analytical Technical Recruiter AI. "
-        "You evaluate candidate-job fit with precision and skepticism. "
+        "Your sole job in this turn is to evaluate candidate-job fit with precision and skepticism. "
         "You NEVER inflate scores and you avoid defaulting to mid-range values. "
         "You must follow scoring rules strictly and output ONLY valid JSON."
     )
@@ -111,12 +112,14 @@ def generate_matching_prompt(
     return system_prompt, user_prompt
 
 
-def make_llm_call(prompts: tuple[str, str], schema) -> dict:
-    client = Client(host=os.getenv("OLLAMA_URL"), timeout=120)
+def make_llm_call(prompts: tuple[str, str], schema: type[BaseModel]) -> dict:
+    client = Client(
+        base_url=os.getenv("OLLAMA_URL"), api_key="not_required_for_ollama", timeout=120
+    )
     try:
         # Call the local Ollama instance
         logger.debug("Sending chat request to Ollama with model: %s", "llama3.2")
-        response = client.chat(
+        response = client.chat.completions.create(
             model="llama3.2",  # Specify your pulled Ollama model here
             messages=[
                 {
@@ -125,20 +128,26 @@ def make_llm_call(prompts: tuple[str, str], schema) -> dict:
                 },
                 {"role": "user", "content": prompts[1]},
             ],
-            stream=False,  # Instructs Ollama to output standard JSON
-            format=schema.model_json_schema(),
-            options={"temperature": 0},
+            temperature=0.0,
+            response_format={"type": "json_object"},
         )
-
+        logger.debug(f"DEBUG: {response.choices}")
         # Extract the text content from the Ollama response
-        response_text = response.get("message", {}).get("content", "")
+        # response_text = response.get("message", {}).get("content", "")
+        response_content = response.choices[0].message.content
+        logger.info("LLM raw response: %s", response_content)
+        try:
+            data = schema.model_validate_json(
+                response_content if response_content else ""
+            )
+            # logger.info("LLM clean data: %s", data)
+            logger.debug(f"Validated model: {data.model_dump()}")
+            return data.model_dump()
+        except Exception as e:
+            logger.info(f"Validation failed {e}")
+            raise Exception(f"Validation failed: {e}")
 
-        logger.info("LLM raw response: %s", response_text)
-        data = json.loads(response_text)
-        logger.info("LLM clean data: %s", data)
-        return data
-
-    except ResponseError as e:
+    except APIStatusError as e:
         raise RuntimeError(f"Error calling Ollama API: {e}") from e
     except json.JSONDecodeError as e:
         raise RuntimeError(f"Error decoding JSON response from Ollama API: {e}") from e

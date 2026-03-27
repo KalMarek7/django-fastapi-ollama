@@ -3,12 +3,10 @@ services:
     image: postgres:latest
     volumes:
       - postgres_data:/var/lib/postgresql
-    environment:
-      - POSTGRES_DB=app_db
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
+    env_file:
+      - .env
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U $POSTGRES_USER -d $POSTGRES_DB"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -46,7 +44,7 @@ services:
     env_file:
       - .env
     environment:
-      - OLLAMA_URL=http://ollama:11434
+      - OLLAMA_URL=http://ollama:11434/v1
     depends_on:
       db:
         condition: service_healthy
@@ -60,8 +58,10 @@ services:
       - ./media:/app/media  # Same shared volume
     ports:
       - "8000:8000"
+    env_file:
+      - .env
     environment:
-      - DATABASE_URL=postgresql://postgres:postgres@db:5432/app_db
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
       - FASTAPI_URL=http://fastapi_service:8000
     depends_on:
       db:
