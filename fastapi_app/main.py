@@ -6,14 +6,13 @@ from typing import Optional
 
 import django
 from asgiref.sync import sync_to_async
-from fastapi import BackgroundTasks, FastAPI
+from fastapi import BackgroundTasks, Depends, FastAPI
+from llm import LLM
 from schemas import JobListingSchema, ScrapeRequest, TaskScheduleResponse
 from scraper import (
     JustJoinITScraper,
     PracujplScraper,
     TheProtocolITScraper,
-    analyze_job_fit,
-    get_listings_details,
 )
 
 logging.basicConfig(
@@ -57,7 +56,12 @@ from home.models import (  # type: ignore # noqa: E402
 from tasks.models import Task  # type: ignore # noqa: E402
 
 
+def get_llm():
+    return LLM("ollama")
+
+
 def perform_scraping_task(
+    llm: LLM,
     task_id: uuid.UUID,
     target_url: Optional[str] = None,
     target_portal: Optional[str] = None,
@@ -73,7 +77,7 @@ def perform_scraping_task(
             logger.info("Scraping single URL: %s from %s", target_url, target_portal)
             scraper = _get_scraper_for_portal(target_url, target_portal)
             try:
-                _process_job_listing(target_url, scraper)
+                _process_job_listing(llm, target_url, scraper)
             except Exception as e:
                 logger.error("Error processing job listing %s: %s", target_url, e)
                 errors_occurred = True
@@ -93,7 +97,7 @@ def perform_scraping_task(
             ]
 
             for scraper in scrapers:
-                if _scrape_portal(scraper):
+                if _scrape_portal(llm, scraper):
                     errors_occurred = True
 
         task_record.status = (
@@ -114,7 +118,7 @@ def perform_scraping_task(
         logger.error("Task %s failed: %s", task_id, e)
 
 
-async def perform_matching_task(task_id: uuid.UUID):
+async def perform_matching_task(llm, task_id: uuid.UUID):
     logger.info("Matching Task %s is EXECUTING now...", task_id)
     errors_occurred = False
     task_record = None
@@ -130,7 +134,7 @@ async def perform_matching_task(task_id: uuid.UUID):
         result = []
         for job in all_jobs:
             try:
-                llm_output = analyze_job_fit(
+                llm_output = llm.analyze_job_fit(
                     job, resume_pl.text_content, resume_en.text_content
                 ).model_dump()
                 await sync_to_async(JobMatch.objects.update_or_create)(
@@ -182,7 +186,7 @@ def _get_scraper_for_portal(url: str, portal: str):
     return scraper_class(url, portal)
 
 
-def _process_job_listing(job_listing_url: str, scraper) -> None:
+def _process_job_listing(llm: LLM, job_listing_url: str, scraper) -> None:
     logger.debug("Scraping %s", job_listing_url)
     portal = Portal.objects.get(name=scraper.portal)
     text_content = scraper.get_data(job_listing_url, raw=True)
@@ -197,9 +201,8 @@ def _process_job_listing(job_listing_url: str, scraper) -> None:
     logger.debug("Done with scraping. Starting LLM...")
     prompts = f"### Context: today is {datetime.now().strftime('%A, %B %d, %Y')}.\n\n{SystemInstruction.objects.get(pk=1).instruction}"
     logger.debug("DEBUG: PROMPTS: %s", prompts)
-    listing_details = get_listings_details(
-        JobListingSchema.model_validate(obj),
-        prompts,
+    listing_details = llm.get_listings_details(
+        JobListingSchema.model_validate(obj), prompts
     )
 
     if isinstance(listing_details, JobListingSchema):
@@ -213,7 +216,7 @@ def _process_job_listing(job_listing_url: str, scraper) -> None:
         )
 
 
-def _scrape_portal(scraper) -> bool:
+def _scrape_portal(llm, scraper) -> bool:
     job_listings = scraper.get_all_listings()
     logger.info("%s items found for %s", len(job_listings), scraper)
 
@@ -222,7 +225,7 @@ def _scrape_portal(scraper) -> bool:
         try:
             logger.info("%i. Processing job listing %s", index, job_listing)
             # logger.info("%i %s", index, job_listing)
-            _process_job_listing(job_listing, scraper)
+            _process_job_listing(llm, job_listing, scraper)
         except Exception as e:
             logger.error(
                 "Error processing job listing %i. %s: %s", index, job_listing, e
@@ -245,6 +248,7 @@ async def get_task_status(task_id: uuid.UUID):
 async def schedule_scraping_task(
     payload: Optional[ScrapeRequest] = None,
     background_tasks: BackgroundTasks = BackgroundTasks(),
+    llm: LLM = Depends(get_llm),
 ):
     """
     This endpoint:
@@ -267,7 +271,9 @@ async def schedule_scraping_task(
             "Task %s is scheduled for %s on %s", task_id, target_url, target_portal
         )
     await sync_to_async(Task.objects.create)(task_id=task_id, status="pending")
-    background_tasks.add_task(perform_scraping_task, task_id, target_url, target_portal)
+    background_tasks.add_task(
+        perform_scraping_task, llm, task_id, target_url, target_portal
+    )
     logger.info("Job %s scheduled", task_id)
     return TaskScheduleResponse(
         task_id=str(task_id),
@@ -278,11 +284,11 @@ async def schedule_scraping_task(
 
 @app.post("/tasks/schedule-matching", response_model=TaskScheduleResponse)
 async def schedule_matching_task(
-    background_tasks: BackgroundTasks = BackgroundTasks(),
+    background_tasks: BackgroundTasks = BackgroundTasks(), llm: LLM = Depends(get_llm)
 ):
     task_id = uuid.uuid4()
     await sync_to_async(Task.objects.create)(task_id=task_id, status="pending")
-    background_tasks.add_task(perform_matching_task, task_id)
+    background_tasks.add_task(perform_matching_task, llm, task_id)
     logger.info("Matching Job %s scheduled", task_id)
     return TaskScheduleResponse(
         task_id=str(task_id),

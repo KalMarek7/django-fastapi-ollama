@@ -7,8 +7,6 @@ from typing import Optional
 
 import httpx
 from bs4 import BeautifulSoup, Tag
-from llm import generate_matching_prompt, make_llm_call
-from schemas import JobExtractionSchema, JobListingSchema, JobMatchAssessment
 from tenacity import (
     before_sleep_log,
     retry,
@@ -337,39 +335,3 @@ class NoFluffJobsScraper(BaseScraper):
         print(data["totalCount"])
         print(data["totalPages"])"""
         return []
-
-
-@retry(
-    stop=stop_after_attempt(5),
-    wait=wait_fixed(3),
-    retry=retry_if_exception_type((httpx.RequestError, OSError)),
-    before_sleep=before_sleep_log(logger, logging.INFO),
-)
-def get_listings_details(job_listing: JobListingSchema, system_instruction: str):
-    """
-    Processes a receipt image using the Gemini API and returns a list of items.
-
-    Args:
-        image_bytes: The bytes of the receipt image.
-
-    Returns:
-        A list of dictionaries, each representing an item from the receipt.
-
-    Raises:
-        ValueError: If the API key is not configured.
-        RuntimeError: If there is an error calling the Gemini API.
-    """
-    logger.info("DEBUG: LLM - Starting get_listings_details() to ollama model")
-    text_content = job_listing.text_content if job_listing.text_content else ""
-    data = make_llm_call((system_instruction, text_content), JobExtractionSchema)
-    return JobListingSchema(**data)
-
-
-def analyze_job_fit(job_instance: JobListingSchema, resume_pl, resume_en):
-    """
-    Analyzes a Django JobListing against a resume using Ollama.
-    """
-    prompts = generate_matching_prompt(job_instance, resume_pl, resume_en)
-    data = make_llm_call(prompts, JobMatchAssessment)
-    # This returns the validated Pydantic object
-    return JobMatchAssessment(**data)

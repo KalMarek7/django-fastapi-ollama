@@ -53,3 +53,42 @@ posted_at
 2026-03-27 12:04:32,100 - ERROR - Error processing job listing 25. https://www.pracuj.pl/praca/java-python-developer-warszawa,oferta,1004681961: Request timed out.
 2026-03-27 13:32:54,269 - ERROR - Error processing job listing 90. https://theprotocol.it/filtry/python;t/backend;sp/praca/specjalista---specjalistka-ds-rozwiazan-biznesowych-i-automatyzacji-bolechowo-pow-poznanski-obornicka-46,oferta,a4eb0000-0ccd-1619-9776-08de7b688ca3: value too long for type character varying(200)
 
+2026-03-27 16:47:37,177 - ERROR - Error processing job listing 119. https://www.pracuj.pl/praca/python-developer-%2blinux-krakow-twardowskiego-65,oferta,1004668261: Validation failed: 2 validation errors for JobExtractionSchema
+expiry_date
+  Input should be a valid date or datetime, input is too short [type=date_from_datetime_parsing, input_value='null', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.12/v/date_from_datetime_parsing
+posted_at
+  Input should be a valid date or datetime, input is too short [type=date_from_datetime_parsing, input_value='null', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.12/v/date_from_datetime_parsing
+2026-03-27 16:47:42,191 - ERROR - Error processing job listing 120. https://www.pracuj.pl/praca/python-developer-%2bdocker-krakow-twardowskiego-65,oferta,1004668258: Validation failed: 2 validation errors for JobExtractionSchema
+expiry_date
+  Input should be a valid date or datetime, input is too short [type=date_from_datetime_parsing, input_value='null', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.12/v/date_from_datetime_parsing
+posted_at
+  Input should be a valid date or datetime, input is too short [type=date_from_datetime_parsing, input_value='null', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.12/v/date_from_datetime_parsing
+2026-03-27 17:44:33,542 - ERROR - Error processing job listing 100. https://theprotocol.it/filtry/python;t/backend;sp/praca/specjalista---specjalistka-ds-rozwiazan-biznesowych-i-automatyzacji-bolechowo-pow-poznanski-obornicka-46,oferta,a4eb0000-0ccd-1619-9776-08de7b688ca3: value too long for type character varying(200)
+
+2026-03-28 10:49:34,909 - ERROR - Error processing job listing 94. https://www.pracuj.pl/praca/web-scraping-specialist-warszawa-aleje-jerozolimskie-181b,oferta,1004672689: Validation failed: 2 validation errors for JobExtractionSchema
+expiry_date
+  Input should be a valid date or datetime, input is too short [type=date_from_datetime_parsing, input_value='null', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.12/v/date_from_datetime_parsing
+posted_at
+  Input should be a valid date or datetime, input is too short [type=date_from_datetime_parsing, input_value='null', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.12/v/date_from_datetime_parsing
+2026-03-28 10:49:39,632 - ERROR - Error processing job listing 95. https://www.pracuj.pl/praca/senior-backend-engineer-python-warszawa-aleje-jerozolimskie-181b,oferta,1004672678: Validation failed: 2 validation errors for JobExtractionSchema
+expiry_date
+  Input should be a valid date or datetime, input is too short [type=date_from_datetime_parsing, input_value='null', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.12/v/date_from_datetime_parsing
+posted_at
+  Input should be a valid date or datetime, input is too short [type=date_from_datetime_parsing, input_value='null', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.12/v/date_from_datetime_parsing
+2026-03-28 10:49:59,722 - ERROR - Error processing job listing 99. https://www.pracuj.pl/praca/c%2b%2b-developer-warszawa,oferta,1004672529: Validation failed: 2 validation errors for JobExtractionSchema
+expiry_date
+  Input should be a valid date or datetime, input is too short [type=date_from_datetime_parsing, input_value='null', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.12/v/date_from_datetime_parsing
+posted_at
+  Input should be a valid date or datetime, input is too short [type=date_from_datetime_parsing, input_value='null', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.12/v/date_from_datetime_parsing
+2026-03-28 11:46:39,118 - ERROR - Error processing job listing 96. https://theprotocol.it/filtry/python;t/backend;sp/praca/specjalista---specjalistka-ds-rozwiazan-biznesowych-i-automatyzacji-bolechowo-pow-poznanski-obornicka-46,oferta,a4eb0000-0ccd-1619-9776-08de7b688ca3: value too long for type character varying(200)
+
