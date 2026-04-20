@@ -39,7 +39,6 @@ services:
       - "8001:8000"
     volumes:
       - ./fastapi_app:/app
-      - ./job_finder:/app/job_finder  # <--- This maps Django project inside FastAPI
       - ./media:/app/media  # Shared volume for PDFs
     env_file:
       - .env

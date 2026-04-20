@@ -8,7 +8,7 @@ class JobListingSchema(BaseModel):
     title: Optional[str] = Field(None, max_length=100)
     company: Optional[str] = Field(None, max_length=100)
     text_content: Optional[str] = None
-    portal_id: Optional[int] = None
+    portal: Optional[int] = None
     expiry_date: Optional[date] = None
     url: Optional[HttpUrl] = None
     created_at: Optional[datetime] = None

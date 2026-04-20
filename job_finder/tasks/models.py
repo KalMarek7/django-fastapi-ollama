@@ -13,7 +13,9 @@ TASK_STATUS_CHOICES = (
 
 
 class Task(models.Model):
-    task_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    task_id = models.UUIDField(
+        primary_key=True, default=uuid.uuid4, editable=False, unique=True
+    )
     status = models.CharField(
         max_length=50, choices=TASK_STATUS_CHOICES, default="pending"
     )

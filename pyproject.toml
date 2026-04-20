@@ -14,4 +14,6 @@ dependencies = [
     "pydantic",
     "tenacity",
     "openai>=2.30.0",
+    "djangorestframework>=3.17.1",
+    "django-filter>=25.2",
 ]

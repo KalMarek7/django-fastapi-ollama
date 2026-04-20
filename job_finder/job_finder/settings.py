@@ -26,7 +26,7 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["django", "127.0.0.1"]
 
 # Format: 'app_name.ModelName'
 AUTH_USER_MODEL = "accounts.CustomUser"
@@ -43,6 +43,9 @@ INSTALLED_APPS = [
     "accounts",
     "home",
     "tasks",
+    "rest_framework",
+    "api",
+    "django_filters",
 ]
 
 MIDDLEWARE = [
@@ -129,3 +132,9 @@ STATIC_URL = "static/"
 STATICFILES_DIRS = [
     BASE_DIR / "static",
 ]
+
+REST_FRAMEWORK = {
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "PAGE_SIZE": 100,
+    # "DEFAULT_FILTER_BACKENDS": ["django_filters.rest_framework.DjangoFilterBackend"],
+}

@@ -9,10 +9,7 @@ class JobListing(models.Model):
         null=True,
         blank=True,
     )
-    url = models.URLField(
-        null=True,
-        blank=True,
-    )
+    url = models.URLField(null=True, blank=True, unique=True, max_length=350)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     company = models.CharField(null=True, blank=True, max_length=200)

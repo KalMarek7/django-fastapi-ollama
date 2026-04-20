@@ -1,11 +1,9 @@
 import logging
-import os
 import uuid
 from datetime import datetime
 from typing import Optional
 
-import django
-from asgiref.sync import sync_to_async
+from db import AsyncDRFClient, DRFClient
 from fastapi import BackgroundTasks, Depends, FastAPI
 from llm import LLM
 from schemas import JobListingSchema, ScrapeRequest, TaskScheduleResponse
@@ -27,14 +25,6 @@ error_file_handler.setFormatter(file_format)
 logger.addHandler(error_file_handler)
 
 
-# 1. Setup the environment variable
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "job_finder.settings")
-
-# 2. Initialize Django (Must happen BEFORE importing models)
-django.setup()
-
-# 3. Now you can safely import from your Django app
-
 app = FastAPI(
     title="Job Scraper Engine",
     description="LLM-powered job extraction service using Gemma & Django.",
@@ -46,14 +36,6 @@ app = FastAPI(
         }
     ],
 )
-from home.models import (  # type: ignore # noqa: E402
-    JobListing,
-    JobMatch,
-    Portal,
-    Resume,
-    SystemInstruction,
-)
-from tasks.models import Task  # type: ignore # noqa: E402
 
 
 def get_llm():
@@ -69,6 +51,7 @@ def perform_scraping_task(
     logger.info("Task %s is EXECUTING now...", task_id)
     errors_occurred = False
     task_record = None
+    drf = DRFClient()
     try:
         logger.info("Starting task...")
         task_record = _get_task_record(task_id)
@@ -100,17 +83,19 @@ def perform_scraping_task(
                 if _scrape_portal(llm, scraper):
                     errors_occurred = True
 
-        task_record.status = (
+        task_record["status"] = (
             "completed" if not errors_occurred else "completed_with_errors"
         )
-        task_record.save()
+        drf.post("tasks", task_record)
+        drf.close()
         logger.info("Task %s completed.", task_id)
     except ValueError:
         pass
     except Exception as e:
         if task_record:
-            task_record.status = "failed"
-            task_record.save()
+            task_record["status"] = "failed"
+            drf.post("tasks", task_record)
+            drf.close()
         else:
             logger.error(
                 "Task %s failed before task_record could be created: %s", task_id, e
@@ -118,7 +103,7 @@ def perform_scraping_task(
         logger.error("Task %s failed: %s", task_id, e)
 
 
-async def perform_matching_task(llm, task_id: uuid.UUID):
+""" async def perform_matching_task(llm, task_id: uuid.UUID):
     logger.info("Matching Task %s is EXECUTING now...", task_id)
     errors_occurred = False
     task_record = None
@@ -161,16 +146,18 @@ async def perform_matching_task(llm, task_id: uuid.UUID):
                 task_id,
                 e,
             )
-        logger.error("Matching Task %s failed: %s", task_id, e)
+        logger.error("Matching Task %s failed: %s", task_id, e) """
 
 
-def _get_task_record(task_id: uuid.UUID) -> Task:
-    task_record = Task.objects.get(task_id=task_id)
-    if task_record.status in ["in_progress", "completed"]:
+def _get_task_record(task_id: uuid.UUID) -> dict:
+    drf = DRFClient()
+    task_record = drf.get("tasks", f"task_id={task_id}")[0]
+    if task_record.get("status") in ["in_progress", "completed"]:
         logger.debug("Task %s already handled. Skipping.", task_id)
         raise ValueError(f"Task {task_id} already handled.")
-    task_record.status = "in_progress"
-    task_record.save()
+    task_record["status"] = "in_progress"
+    drf.post("tasks", task_record)
+    drf.close()
     return task_record
 
 
@@ -188,32 +175,36 @@ def _get_scraper_for_portal(url: str, portal: str):
 
 def _process_job_listing(llm: LLM, job_listing_url: str, scraper) -> None:
     logger.debug("Scraping %s", job_listing_url)
-    portal = Portal.objects.get(name=scraper.portal)
+    # portal = Portal.objects.get(name=scraper.portal)
+    drf = DRFClient()
+    portal = drf.get("portals", f"name={scraper.portal}")
+    logger.debug(portal)
     text_content = scraper.get_data(job_listing_url, raw=True)
-
-    obj, created = JobListing.objects.update_or_create(
-        url=job_listing_url,
-        defaults={
-            "text_content": text_content,
-            "portal": portal,
-        },
+    payload = {
+        "url": job_listing_url,
+        "text_content": text_content,
+        "portal": portal[0]["id"],
+    }
+    logger.debug("DEBUG: INITIAL POST PAYLOAD: %s", payload)
+    obj = drf.post(
+        "job_listings",
+        payload,
     )
     logger.debug("Done with scraping. Starting LLM...")
-    prompts = f"### Context: today is {datetime.now().strftime('%A, %B %d, %Y')}.\n\n{SystemInstruction.objects.get(pk=1).instruction}"
+    system_instruction = drf.get("system_instructions", "id=1")[0].get("instruction")
+    prompts = f"### Context: today is {datetime.now().strftime('%A, %B %d, %Y')}.\n\n{system_instruction}"
     logger.debug("DEBUG: PROMPTS: %s", prompts)
+    logger.debug("DEBUG: obj: %s", obj)
     listing_details = llm.get_listings_details(
         JobListingSchema.model_validate(obj), prompts
     )
-
     if isinstance(listing_details, JobListingSchema):
-        JobListing.objects.filter(url=job_listing_url).update(
-            title=listing_details.title,
-            expiry_date=listing_details.expiry_date,
-            company=listing_details.company,
-            salary=listing_details.salary,
-            years_of_experience=listing_details.years_of_experience,
-            posted_at=listing_details.posted_at,
-        )
+        listing_dict = listing_details.model_dump(mode="json")
+        filtered_data = {k: v for k, v in listing_dict.items() if v is not None}
+        obj.update(filtered_data)
+        logger.debug("Listing dict before drf.post %s", obj)
+        drf.post("job_listings", obj)
+    drf.close()
 
 
 def _scrape_portal(llm, scraper) -> bool:
@@ -236,18 +227,16 @@ def _scrape_portal(llm, scraper) -> bool:
 
 @app.get("/tasks/status/{task_id}", tags=["Scraping Tasks"])
 async def get_task_status(task_id: uuid.UUID):
-    task = await sync_to_async(Task.objects.get)(task_id=task_id)
-    return {
-        "task_id": task.task_id,
-        "status": task.status,
-        "updated_at": task.updated_at,
-    }
+    drf = AsyncDRFClient()
+    task = await drf.get("tasks", f"task_id={task_id}")
+    await drf.close()
+    return task
 
 
 @app.post("/tasks/schedule-scraping")
 async def schedule_scraping_task(
+    background_tasks: BackgroundTasks,
     payload: Optional[ScrapeRequest] = None,
-    background_tasks: BackgroundTasks = BackgroundTasks(),
     llm: LLM = Depends(get_llm),
 ):
     """
@@ -270,7 +259,9 @@ async def schedule_scraping_task(
         logger.info(
             "Task %s is scheduled for %s on %s", task_id, target_url, target_portal
         )
-    await sync_to_async(Task.objects.create)(task_id=task_id, status="pending")
+    drf = AsyncDRFClient()
+    await drf.post("tasks", {"task_id": str(task_id), "status": "pending"})
+    await drf.close()
     background_tasks.add_task(
         perform_scraping_task, llm, task_id, target_url, target_portal
     )
@@ -282,7 +273,7 @@ async def schedule_scraping_task(
     )
 
 
-@app.post("/tasks/schedule-matching", response_model=TaskScheduleResponse)
+""" @app.post("/tasks/schedule-matching", response_model=TaskScheduleResponse)
 async def schedule_matching_task(
     background_tasks: BackgroundTasks = BackgroundTasks(), llm: LLM = Depends(get_llm)
 ):
@@ -294,4 +285,4 @@ async def schedule_matching_task(
         task_id=str(task_id),
         message="Matching task started in background",
         status_url=f"/tasks/status/{task_id}",
-    )
+    ) """
