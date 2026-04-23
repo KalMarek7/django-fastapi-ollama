@@ -3,3 +3,5 @@ django-filter
 djangorestframework
 psycopg2-binary
 httpx
+pytest
+pytest-django

@@ -18,6 +18,9 @@ class JobListing(models.Model):
     portal = models.ForeignKey("Portal", on_delete=models.CASCADE)
     posted_at = models.DateField(null=True, blank=True)
 
+    class Meta:
+        ordering = ["-created_at"]
+
 
 class Portal(models.Model):
     name = models.CharField(max_length=100)
@@ -29,6 +32,9 @@ class Portal(models.Model):
     def __str__(self):
         return self.name
 
+    class Meta:
+        ordering = ["-name"]
+
 
 class SystemInstruction(models.Model):
     name = models.CharField(max_length=100)
@@ -36,12 +42,21 @@ class SystemInstruction(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        ordering = ["-created_at"]
+
 
 class Resume(models.Model):
     name = models.CharField(max_length=100)
     text_content = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name
 
 
 class JobMatch(models.Model):

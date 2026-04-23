@@ -24,3 +24,6 @@ class Task(models.Model):
 
     def __str__(self):
         return f"{self.task_id} - {self.status}"
+
+    class Meta:
+        ordering = ["-created_at"]

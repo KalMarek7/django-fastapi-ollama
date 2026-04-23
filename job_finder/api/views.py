@@ -21,14 +21,19 @@ class TaskList(generics.ListCreateAPIView):
 
     def post(self, request, *args, **kwargs):
         task_id = request.data.get("task_id")
-        # Perform the logic directly in the post method
-        obj, created = Task.objects.update_or_create(
-            task_id=task_id,
-            defaults={"status": request.data.get("status")},
-        )
+        obj = Task.objects.filter(task_id=task_id).first()
+        # Check if task already exists
+        if obj:
+            # Update existing
+            serializer = self.get_serializer(obj, data=request.data, partial=True)
+        else:
+            # Create new
+            serializer = self.get_serializer(obj, data=request.data)
 
-        serializer = self.get_serializer(obj)
-        res_status = status.HTTP_201_CREATED if created else status.HTTP_200_OK
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        res_status = status.HTTP_201_CREATED if not obj else status.HTTP_200_OK
         return Response(serializer.data, status=res_status)
 
 
@@ -48,16 +53,18 @@ class JobListingList(generics.ListCreateAPIView):
 
     def post(self, request, *args, **kwargs):
         url = request.data.get("url")
-        portal_obj = Portal.objects.get(id=request.data.get("portal"))
-        request.data["portal"] = portal_obj
-        # Perform the logic directly in the post method
-        obj, created = JobListing.objects.update_or_create(
-            url=url,
-            defaults=request.data,
-        )
+        # Check if job already exists
+        obj = JobListing.objects.filter(url=url).first()
+        if obj:
+            # Update existing
+            serializer = self.get_serializer(obj, data=request.data, partial=True)
+        else:
+            # Create new
+            serializer = self.get_serializer(data=request.data)
 
-        serializer = self.get_serializer(obj)
-        res_status = status.HTTP_201_CREATED if created else status.HTTP_200_OK
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        res_status = status.HTTP_201_CREATED if not obj else status.HTTP_200_OK
         return Response(serializer.data, status=res_status)
 
 
