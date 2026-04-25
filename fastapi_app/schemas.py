@@ -1,10 +1,19 @@
 from datetime import date, datetime
 from typing import List, Optional
 
-from pydantic import BaseModel, Field, HttpUrl, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    HttpUrl,
+    field_validator,
+    model_validator,
+)
 
 
 class JobListingSchema(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    # Fields
     title: Optional[str] = Field(None, max_length=100)
     company: Optional[str] = Field(None, max_length=100)
     text_content: Optional[str] = None
@@ -16,9 +25,6 @@ class JobListingSchema(BaseModel):
     years_of_experience: Optional[int] = None
     salary: Optional[str] = None
     posted_at: Optional[date] = None
-
-    class Config:
-        from_attributes = True
 
 
 class JobExtractionSchema(BaseModel):
@@ -47,10 +53,14 @@ class JobMatchAssessment(BaseModel):
 
 
 class TaskScheduleResponse(BaseModel):
-    task_id: str = Field(..., examples=["550e8400-e29b-41d4-a716-446655440000"])
-    message: str = Field(..., examples=["Task started in background"])
+    task_id: str = Field(
+        ..., min_length=1, examples=["550e8400-e29b-41d4-a716-446655440000"]
+    )
+    message: str = Field(..., min_length=1, examples=["Task started in background"])
     status_url: str = Field(
-        ..., examples=["/tasks/status/550e8400-e29b-41d4-a716-446655440000"]
+        ...,
+        min_length=1,
+        examples=["/tasks/status/550e8400-e29b-41d4-a716-446655440000"],
     )
 
 

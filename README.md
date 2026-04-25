@@ -1,4 +1,4 @@
-# Job Scraper Engine — AI-Powered IT Job Aggregator
+# Job Scraper Engine | AI-Powered IT Job Aggregator
 
 A production-ready full-stack application that scrapes job listings from major Polish IT portals, leverages local LLMs (Ollama) for intelligent job data extraction, and exposes everything through a robust REST API. Built with Django, FastAPI, and PostgreSQL.
 
@@ -6,21 +6,21 @@ A production-ready full-stack application that scrapes job listings from major P
 
 This project demonstrates proficiency in:
 
-- **Python Backend Development** — Django 5.x with Django REST Framework for robust API design
-- **FastAPI & Async Processing** — High-performance background task handling
-- **LLM Integration** — Local AI inference with Ollama for structured data extraction
-- **Web Scraping** — Multi-portal data collection with BeautifulSoup4
-- **System Architecture** — Docker Compose orchestration with PostgreSQL
-- **Prompt Engineering** — Custom LLM prompts for job metadata extraction
+- **Python Backend Development** - Django 5.x with Django REST Framework for robust API design
+- **FastAPI & Async Processing** - High-performance background task handling
+- **LLM Integration** - Local AI inference with Ollama for structured data extraction
+- **Web Scraping** - Multi-portal data collection with BeautifulSoup4
+- **System Architecture** - Docker Compose orchestration with PostgreSQL
+- **Prompt Engineering** - Custom LLM prompts for job metadata extraction
 
 ## Key Features
 
-- **Multi-Portal Scraping** — Aggregates jobs from Pracuj.pl, JustJoinIT, and TheProtocol.it
-- **LLM-Powered Extraction** — Uses Llama 3.2 (via Ollama) to parse raw HTML into structured job data (title, company, salary, experience level)
-- **Background Task Processing** — Async job scheduling with FastAPI background tasks
-- **RESTful API** — Full CRUD operations via Django REST Framework
-- **Persistent Storage** — PostgreSQL database with Django ORM
-- **Dockerized** — One-command deployment with Docker Compose
+- **Multi-Portal Scraping** - Aggregates jobs from Pracuj.pl, JustJoinIT, and TheProtocol.it
+- **LLM-Powered Extraction** - Uses Llama 3.2 (via Ollama) to parse raw HTML into structured job data (title, company, salary, experience level)
+- **Background Task Processing** - Async job scheduling with FastAPI background tasks
+- **RESTful API** - Full CRUD operations via Django REST Framework
+- **Persistent Storage** - PostgreSQL database with Django ORM
+- **Dockerized** - One-command deployment with Docker Compose
 
 ## Technical Stack
 
@@ -168,8 +168,8 @@ curl "http://localhost:8000/api/job-listings/?portal=JustJoinIT"
 
 The system uses a two-stage prompting approach:
 
-1. **System Instruction** — Configurable prompt stored in database that defines extraction rules
-2. **Dynamic Context** — Today's date is injected to help LLM assess job freshness
+1. **System Instruction** - Configurable prompt stored in database that defines extraction rules
+2. **Dynamic Context** - Today's date is injected to help LLM assess job freshness
 
 ### Structured Output
 
@@ -213,16 +213,20 @@ django-fastapi-cv/
 ```
 
 ## Testing
-This project uses **pytest** with **pytest-django** for comprehensive test coverage.
 
-### Django Tests
+This project uses **pytest** with **pytest-django** for comprehensive test coverage across both Django and FastAPI services.
 
-#### Test Configuration
-- pytest.ini in job_finder/
-- Uses Django test database (created automatically)
-- Authentication via APIClient with force_authenticate()
+### Test Configuration
 
-#### Test coverage
+- `pytest.ini` in job_finder/ for Django tests
+- FastAPI tests use FastAPI TestClient with mocked dependencies
+- Django tests use APIClient with force_authenticate()
+- Background tasks are mocked in FastAPI tests to avoid external calls
+
+### Test Coverage
+
+#### Django Tests (job_finder/)
+
 | Test File | Coverage |
 |----------|----------|
 | `job_finder/tasks/tests.py` | Task model |
@@ -230,17 +234,32 @@ This project uses **pytest** with **pytest-django** for comprehensive test cover
 | `job_finder/api/tests.py` | Serializers + API views |
 | `job_finder/accounts/tests.py` | CustomUser model |
 
-#### Running Tests
+#### FastAPI Tests (fastapi_app/tests/)
+
+| Test File | Coverage |
+|----------|----------|
+| `fastapi_app/tests/test_schemas.py` | Pydantic models |
+| `fastapi_app/tests/test_api.py` | API endpoints |
+
+### Running Tests
+
+#### Django Tests
 ```bash
-# Run all tests via Docker
-docker compose exec django pytest --reuse-db
+# Run all Django tests via Docker
+docker compose exec django pytest job_finder/ --reuse-db
+```
+
+#### FastAPI Tests
+```bash
+# Run FastAPI tests via Docker
+docker compose exec fastapi_service pytest fastapi_app/tests/ -v
 ```
 
 ## Future Enhancements
 
-- [ ] Resume-Job Matching — AI-powered candidate-job fit scoring using stored resumes
-- [ ] Email Notifications — Send new matches to candidates
-- [ ] Web Dashboard — React/Vue frontend for visualization
-- [ ] Additional Portals — Expand to NoFluffJobs, LinkedIn, etc.
-- [ ] Caching Layer — Redis for frequently accessed queries
-- [ ] CI/CD Pipeline — GitHub Actions for automated testing
+- [ ] Resume-Job Matching - AI-powered candidate-job fit scoring using stored resumes
+- [ ] Email Notifications - Send new matches to candidates
+- [ ] Web Dashboard - React/Vue frontend for visualization
+- [ ] Additional Portals - Expand to NoFluffJobs, LinkedIn, etc.
+- [ ] Caching Layer - Redis for frequently accessed queries
+- [ ] CI/CD Pipeline - GitHub Actions for automated testing

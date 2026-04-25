@@ -1,7 +1,7 @@
 [project]
 name = "django-fastapi-cv"
 version = "0.1.0"
-description = "Add your description here"
+description = "Job Scraper Engine | AI-Powered IT Job Aggregator"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
