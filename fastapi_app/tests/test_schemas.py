@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 
 import pytest
 from pydantic import ValidationError
@@ -45,19 +45,19 @@ class TestJobExtractionSchema:
 
     def test_date_parsing_with_t_separator(self):
         schema = JobExtractionSchema(
-            expiry_date="2026-12-25T10:30:00",
-            posted_at="2026-04-01T08:00:00",
+            expiry_date=datetime.fromisoformat("2026-12-25T10:30:00").date(),
+            posted_at=datetime.fromisoformat("2026-04-01T08:00:00").date(),
         )
         assert schema.expiry_date == date(2026, 12, 25)
         assert schema.posted_at == date(2026, 4, 1)
 
     def test_date_string_without_time(self):
-        schema = JobExtractionSchema(expiry_date="2026-12-25")
+        schema = JobExtractionSchema(expiry_date=date.fromisoformat("2026-12-25"))
         assert schema.expiry_date == date(2026, 12, 25)
 
     def test_invalid_date_string(self):
         with pytest.raises(ValidationError):
-            JobExtractionSchema(expiry_date="not-a-date")
+            JobExtractionSchema(expiry_date="not-a-date")  # type: ignore
         # assert schema.expiry_date == "not-a-date"
 
 
@@ -131,7 +131,7 @@ class TestTaskScheduleResponse:
 class TestScrapeRequest:
     def test_both_url_and_portal_provided(self):
         schema = ScrapeRequest(
-            url="https://justjoin.it/job/python-dev",
+            url="https://justjoin.it/job/python-dev",  # type: ignore
             portal="JustJoinIT",
         )
         assert str(schema.url) == "https://justjoin.it/job/python-dev"
@@ -144,7 +144,7 @@ class TestScrapeRequest:
 
     def test_only_url_raises_error(self):
         with pytest.raises(ValidationError) as exc_info:
-            ScrapeRequest(url="https://justjoin.it/job/python-dev")
+            ScrapeRequest(url="https://justjoin.it/job/python-dev")  # type: ignore
         assert "both 'url' and 'portal'" in str(exc_info.value)
 
     def test_only_portal_raises_error(self):
@@ -156,7 +156,7 @@ class TestScrapeRequest:
         portals = ["JustJoinIT", "Pracuj.pl", "theprotocol.it"]
         for portal in portals:
             schema = ScrapeRequest(
-                url="https://example.com/job",
+                url="https://example.com/job",  # type: ignore
                 portal=portal,
             )
             assert schema.portal == portal

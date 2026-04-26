@@ -23,7 +23,7 @@ class TestJobListingSerializer:
         data = serializer.data
         assert data["title"] == "Python Dev"
         assert data["company"] == "TechCorp"
-        assert data["portal"] == portal.id
+        assert data["portal"] == portal.pk
 
 
 @pytest.mark.django_db
@@ -149,7 +149,7 @@ class TestJobListingListAPI:
             portal=self.portal,
         )
         response = authenticated_client.get(
-            f"/api/job_listings/?portal={self.portal.id}"
+            f"/api/job_listings/?portal={self.portal.pk}"
         )
         assert response.status_code == status.HTTP_200_OK
 
@@ -167,7 +167,7 @@ class TestJobListingCreateAPI:
                 "company": "TechCorp",
                 "text_content": "Description",
                 "url": "https://test.com/job/new",
-                "portal": self.portal.id,
+                "portal": self.portal.pk,
             },
         )
         assert response.status_code == status.HTTP_201_CREATED
@@ -181,7 +181,7 @@ class TestJobListingCreateAPI:
                 "title": "First",
                 "text_content": "desc",
                 "url": url,
-                "portal": self.portal.id,
+                "portal": self.portal.pk,
             },
         )
         response = authenticated_client.post(
@@ -190,7 +190,7 @@ class TestJobListingCreateAPI:
                 "title": "Updated",
                 "text_content": "desc",
                 "url": url,
-                "portal": self.portal.id,
+                "portal": self.portal.pk,
             },
         )
         assert response.status_code == status.HTTP_200_OK

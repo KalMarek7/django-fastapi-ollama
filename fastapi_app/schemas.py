@@ -14,8 +14,8 @@ from pydantic import (
 class JobListingSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     # Fields
-    title: Optional[str] = Field(None, max_length=100)
-    company: Optional[str] = Field(None, max_length=100)
+    title: Optional[str] = Field(default=None, max_length=100)
+    company: Optional[str] = Field(default=None, max_length=100)
     text_content: Optional[str] = None
     portal: Optional[int] = None
     expiry_date: Optional[date] = None
@@ -28,8 +28,8 @@ class JobListingSchema(BaseModel):
 
 
 class JobExtractionSchema(BaseModel):
-    title: Optional[str] = Field(None, max_length=100)
-    company: Optional[str] = Field(None, max_length=100)
+    title: Optional[str] = Field(default=None, max_length=100)
+    company: Optional[str] = Field(default=None, max_length=100)
     years_of_experience: Optional[int] = None
     salary: Optional[str] = None
     expiry_date: Optional[date] = None
@@ -66,12 +66,12 @@ class TaskScheduleResponse(BaseModel):
 
 class ScrapeRequest(BaseModel):
     url: Optional[HttpUrl] = Field(
-        None,
+        default=None,
         description="The specific job listing URL. **If provided, 'portal' must also be provided.**",
         examples=["https://theprotocol.it/filtry/python;t/backend;sp"],
     )
     portal: Optional[str] = Field(
-        None,
+        default=None,
         description="The name of the portal (e.g., 'JustJoinIT'). **Required if 'url' is provided.**",
         examples=["theprotocol.it"],
     )

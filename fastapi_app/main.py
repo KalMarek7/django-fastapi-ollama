@@ -18,8 +18,9 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
-error_file_handler = logging.FileHandler("error_log.txt")
-error_file_handler.setLevel(logging.ERROR)  # Only capture ERROR and CRITICAL
+logger.propagate = False
+error_file_handler = logging.FileHandler("error_log.log")
+error_file_handler.setLevel(logging.ERROR)
 file_format = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
 error_file_handler.setFormatter(file_format)
 logger.addHandler(error_file_handler)

@@ -194,6 +194,7 @@ class TestAdminActions:
         replace_api_url(modeladmin, request, queryset)
 
         job = JobListing.objects.first()
+        assert job is not None
         assert job.url is not None
         assert "/job-offer" in job.url
         assert "/api/candidate-api/offers" not in job.url

@@ -18,6 +18,9 @@ class JobListing(models.Model):
     portal = models.ForeignKey("Portal", on_delete=models.CASCADE)
     posted_at = models.DateField(null=True, blank=True)
 
+    def __str__(self):
+        return f"{self.title} - {self.url}"
+
     class Meta:
         ordering = ["-created_at"]
 
@@ -64,6 +67,9 @@ class JobMatch(models.Model):
     job_listing = models.ForeignKey("JobListing", on_delete=models.CASCADE)
     llm_output = models.JSONField()
     created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self) -> str:
+        return f"{self.job_listing}"
 
     class Meta:
         # Prevent duplicate analysis for the same resume/job pair

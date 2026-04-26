@@ -258,6 +258,7 @@ docker compose exec fastapi_service pytest fastapi_app/tests/ -v
 ## Future Enhancements
 
 - [ ] Resume-Job Matching - AI-powered candidate-job fit scoring using stored resumes
+- [ ] Explicit support for cloud gemini/open source models
 - [ ] Email Notifications - Send new matches to candidates
 - [ ] Web Dashboard - React/Vue frontend for visualization
 - [ ] Additional Portals - Expand to NoFluffJobs, LinkedIn, etc.
