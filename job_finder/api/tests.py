@@ -221,6 +221,10 @@ class TestSystemInstructionListAPI:
     def test_system_instruction_create(self, authenticated_client):
         response = authenticated_client.post(
             "/api/system_instructions/",
-            {"name": "Extract Job", "instruction": "Extract details"},
+            {
+                "name": "Extract Job",
+                "instruction": "Extract details",
+                "description": "Testing",
+            },
         )
         assert response.status_code == status.HTTP_201_CREATED

@@ -3,6 +3,7 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
+from config import logging_level
 from db import AsyncDRFClient, DRFClient
 from fastapi import BackgroundTasks, Depends, FastAPI
 from llm import LLM
@@ -14,7 +15,7 @@ from scraper import (
 )
 
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=logging_level,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
@@ -192,6 +193,7 @@ def _process_job_listing(llm: LLM, job_listing_url: str, scraper) -> None:
         payload,
     )
     logger.debug("Done with scraping. Starting LLM...")
+    # The below is the default system instruction for LLM job data extraction seeded from migrations
     system_instruction = drf.get("system_instructions", "id=1")[0].get("instruction")
     prompts = f"### Context: today is {datetime.now().strftime('%A, %B %d, %Y')}.\n\n{system_instruction}"
     logger.debug("DEBUG: PROMPTS: %s", prompts)

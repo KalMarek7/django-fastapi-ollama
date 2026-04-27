@@ -2,9 +2,10 @@ import json
 import logging
 import os
 
+from config import model_name
 from httpx import RequestError
 from openai import APIStatusError, Client
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 from schemas import JobExtractionSchema, JobListingSchema, JobMatchAssessment
 from tenacity import (
     before_sleep_log,
@@ -38,17 +39,21 @@ class LLM:
         self, job_listing: JobListingSchema, system_instruction: str
     ):
         """
-        Processes a receipt image using the OpenAI API and returns a list of items.
+        Extracts structured job details from scraped listing text using the LLM.
+
+        Sends the job listing's text content to the LLM with a system instruction prompt.
+        The LLM returns structured data (title, company, experience, salary, etc.) which
+        is validated and returned as a JobListingSchema.
 
         Args:
-            image_bytes: The bytes of the receipt image.
+            job_listing: JobListingSchema containing the scraped text content and metadata.
+            system_instruction: System prompt instructing the LLM on extraction format.
 
         Returns:
-            A list of dictionaries, each representing an item from the receipt.
+            JobListingSchema with extracted and validated job details.
 
         Raises:
-            ValueError: If the API key is not configured.
-            RuntimeError: If there is an error calling the OpenAI API.
+            RuntimeError: If there is an error calling the LLM API or decoding the response.
         """
         logger.info("DEBUG: LLM - Starting get_listings_details() to ollama model")
         text_content = job_listing.text_content if job_listing.text_content else ""
@@ -173,7 +178,7 @@ class LLM:
             # Call the local Ollama instance
             logger.debug("Sending chat request to Ollama with model: %s", "llama3.2")
             response = self.client.chat.completions.create(
-                model="llama3.2",  # Specify your pulled Ollama model here
+                model=model_name,
                 messages=[
                     {
                         "role": "system",
@@ -193,12 +198,25 @@ class LLM:
                 data = schema.model_validate_json(
                     response_content if response_content else ""
                 )
-                # logger.info("LLM clean data: %s", data)
-                logger.debug(f"Validated model: {data.model_dump()}")
+                logger.debug("Validated model: %s", data.model_dump())
                 return data.model_dump()
+            except ValidationError as e:
+                errors = e.errors()
+                error_summary = [
+                    f"{err['loc']}: {err['msg']} (input: {repr(err.get('input'))})"
+                    for err in errors
+                ]
+                context = f"Schema={schema.__name__}, Response={response_content if response_content else ''}"
+                detail = f"{len(errors)} validation error(s): {error_summary}. Context: {context}"
+                logger.error("LLM validation failed. %s", detail)
+                raise ValueError(
+                    f"LLM response failed schema validation. {detail}"
+                ) from e
             except Exception as e:
-                logger.info(f"Validation failed {e}")
-                raise Exception(f"Validation failed: {e}")
+                logger.error("Unexpected error during schema validation: %s", e)
+                raise RuntimeError(
+                    f"Unexpected error during schema validation: {e}"
+                ) from e
 
         except APIStatusError as e:
             raise RuntimeError(f"Error calling Ollama API: {e}") from e

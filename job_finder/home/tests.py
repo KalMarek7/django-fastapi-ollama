@@ -31,6 +31,7 @@ class TestSystemInstructionModel:
         instruction = SystemInstruction.objects.create(
             name="Extract Job Details",
             instruction="Extract title, company, salary from job posting.",
+            description="Testing",
         )
         assert instruction.name == "Extract Job Details"
         assert (

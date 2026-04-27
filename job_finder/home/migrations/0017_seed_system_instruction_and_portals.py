@@ -1,0 +1,109 @@
+import textwrap
+
+from django.db import migrations
+
+
+def create_default_system_instruction(apps, schema_editor):
+    SystemInstruction = apps.get_model("home", "SystemInstruction")
+    if not SystemInstruction.objects.filter(pk=1).exists():
+        SystemInstruction.objects.create(
+            id=1,
+            name="Default Job Extraction Prompt",
+            description="Default system instruction for LLM job data extraction",
+            instruction=textwrap.dedent("""\
+### Role
+You are a literalist data extraction engine. Your goal is to move data from text to JSON with 0% imagination. Do not infer, guess, or calculate values. Your ONLY job is to populate a specific 6-key JSON object.
+
+### Extraction Logic for Years of Experience:
+
+- Find a number that is directly associated with experience-related words.
+
+- A valid match MUST contain:
+  (number) + (experience keyword in the same phrase)
+
+- Experience keywords:
+  "years", "year", "exp", "experience", "lat", "doświadczenia"
+
+- Valid examples:
+  "3 years experience" → 3  
+  "min. 2 years" → 2  
+  "5+ years of experience" → 5  
+  "at least 4 years" → 4  
+  "2-letnie doświadczenie" → 2  
+
+- The number MUST be within 3 words of the keyword.
+
+- If multiple matches exist, choose the FIRST valid one.
+
+- Extract ONLY the integer part (ignore "+", ranges, or text).
+
+- REASONABILITY CHECK:
+  Ignore numbers > 15 ONLY if they are clearly dates (e.g., 2024, 2025).
+
+- If a number is found near an experience keyword, it is valid.
+  DO NOT reject it due to uncertainty.
+
+- Do NOT infer from titles like "Senior" or "Mid".
+
+- If no valid number + keyword pair is found → return null.
+
+### Grounding Guardrails (STRICT):
+1. **Salary:** - Extract only if an explicit currency (PLN, USD, EUR, $) and numbers are present.
+   - DO NOT return "None to None" or placeholders. If not explicitly found, return null.
+2. **Dates:** - Convert all dates to YYYY-MM-DD. 
+   - If the input contains a timestamp (e.g., 2026-03-26T10:00:21Z), TRUNCATE it to the first 10 characters: "2026-03-26".
+
+### Schema Requirements (ONLY THESE KEYS ARE ALLOWED):
+- title: (str | null) Job title, max 100 chars.
+- company: (str | null) Company name, max 100 chars.
+- expiry_date: (str | null) YYYY-MM-DD only.
+- years_of_experience: (int | null) Integer between 0 and 15.
+- salary: (str | null) Text representation of pay.
+- posted_at: (str | null) YYYY-MM-DD only.
+
+### Formatting Rules:
+- Return ONLY valid JSON. 
+- NO markdown (no ```json). NO preamble. NO chatter.
+- If a value is missing or fails a reasonability check, use null.
+- Start with { and end with }."""),
+        )
+
+
+def create_default_portals(apps, schema_editor):
+    Portal = apps.get_model("home", "Portal")
+    # Only create if no portals exist (idempotent)
+    if not Portal.objects.exists():
+        Portal.objects.bulk_create(
+            [
+                Portal(
+                    id=1,
+                    name="Pracuj.pl",
+                    url="https://it.pracuj.pl/praca?sc=0&its=backend&itth=37",
+                    is_active=True,
+                ),
+                Portal(
+                    id=2,
+                    name="JustJoinIT",
+                    url="https://justjoin.it",
+                    is_active=True,
+                ),
+                Portal(
+                    id=3,
+                    name="theprotocol.it",
+                    url="https://theprotocol.it/filtry/python;t backend;sp",
+                    is_active=True,
+                ),
+            ]
+        )
+
+
+class Migration(migrations.Migration):
+    dependencies = [
+        ("home", "0016_alter_joblisting_options_alter_portal_options_and_more"),
+    ]
+    operations = [
+        migrations.RunPython(
+            create_default_system_instruction, migrations.RunPython.noop
+        ),
+        migrations.RunPython(create_default_portals, migrations.RunPython.noop),
+    ]
