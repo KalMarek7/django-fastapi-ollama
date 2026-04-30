@@ -1,8 +1,3 @@
-import os
-
-DRF = os.getenv("DRF", "")
-
-
 class TestGetTaskStatus:
     def test_get_task_status_success(self, test_client, mock_async_drf_client):
         task_id = "550e8400-e29b-41d4-a716-446655440000"

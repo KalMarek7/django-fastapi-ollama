@@ -2,6 +2,7 @@ import logging
 import os
 
 import httpx
+from fastapi import HTTPException
 
 logger = logging.getLogger(__name__)
 
@@ -31,9 +32,19 @@ class DRFClient:
             url=f"http://django:8000/api/{resource}/{f'?{filter}' if filter else ''}"
         )
         logger.debug("DEBUG: HEADERS: ", response.headers)
-        response.raise_for_status()
-        # print(response.json())
-        return response.json()["results"]
+        try:
+            response.raise_for_status()
+            # print(response.json())
+            return response.json()["results"]
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code in (401, 403):
+                raise HTTPException(
+                    status_code=503, detail="DRF auth invalid or credentials missing"
+                )
+            else:
+                raise HTTPException(
+                    status_code=e.response.status_code, detail=e.response.text
+                )
 
     def post(self, resource: str, payload: dict):
         response = self.HTTPClient.post(
@@ -42,10 +53,20 @@ class DRFClient:
         )
         logger.debug("DEBUG: HEADERS: ", response.headers)
         logger.info(response.text)
-        response.raise_for_status()
+        try:
+            response.raise_for_status()
 
-        logger.debug("DEBUG: POST RESPONSE: ", response.json())
-        return response.json()
+            logger.debug("DEBUG: POST RESPONSE: ", response.json())
+            return response.json()
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code in (401, 403):
+                raise HTTPException(
+                    status_code=503, detail="DRF auth invalid or credentials missing"
+                )
+            else:
+                raise HTTPException(
+                    status_code=e.response.status_code, detail=e.response.text
+                )
 
     def close(self):
         logger.debug("Closing httpx client")
@@ -66,15 +87,35 @@ class AsyncDRFClient:
     async def get(self, resource: str, filter: str = ""):
         url = f"http://django:8000/api/{resource}/{f'?{filter}' if filter else ''}"
         response = await self.client.get(url)
-        response.raise_for_status()
-        data = response.json()
-        return data.get("results", data)
+        try:
+            response.raise_for_status()
+            data = response.json()
+            return data.get("results", data)
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code in (401, 403):
+                raise HTTPException(
+                    status_code=503, detail="DRF auth invalid or credentials missing"
+                )
+            else:
+                raise HTTPException(
+                    status_code=e.response.status_code, detail=e.response.text
+                )
 
     async def post(self, resource: str, payload: dict):
         url = f"http://django:8000/api/{resource}/"
-        response = await self.client.post(url, json=payload)
-        response.raise_for_status()
-        return response.json()
+        try:
+            response = await self.client.post(url, json=payload)
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code in (401, 403):
+                raise HTTPException(
+                    status_code=503, detail="DRF auth invalid or credentials missing"
+                )
+            else:
+                raise HTTPException(
+                    status_code=e.response.status_code, detail=e.response.text
+                )
 
     async def close(self):
         await self.client.aclose()
