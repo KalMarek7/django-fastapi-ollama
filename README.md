@@ -73,8 +73,8 @@ The goal was to have a working automation tool while learning each technology ha
 1. **Clone the repository**
 
 ```bash
-git clone https://github.com/yourusername/django-fastapi-cv.git
-cd django-fastapi-cv
+git clone https://github.com/KalMarek7/django-fastapi-ollama.git
+cd django-fastapi-ollama
 ```
 
 2. **Configure environment variables**
