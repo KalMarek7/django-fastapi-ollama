@@ -31,6 +31,17 @@ class Portal(models.Model):
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    scrape_url = models.URLField(null=True, blank=True, max_length=500)
+    scraper_class = models.CharField(
+        max_length=50,
+        null=True,
+        blank=True,
+        choices=[
+            ("PracujplScraper", "PracujplScraper"),
+            ("JustJoinITScraper", "JustJoinITScraper"),
+            ("TheProtocolITScraper", "TheProtocolITScraper"),
+        ],
+    )
 
     def __str__(self):
         return self.name

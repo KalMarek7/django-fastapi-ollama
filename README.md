@@ -1,17 +1,20 @@
 # Job Scraper Engine | AI-Powered IT Job Aggregator
 
-A production-ready full-stack application that scrapes job listings from major Polish IT portals, leverages local LLMs (Ollama) for intelligent job data extraction, and exposes everything through a robust REST API. Built with Django, FastAPI, and PostgreSQL.
+A production-ready backend application that scrapes job listings from major Polish IT portals, leverages local LLMs (Ollama) for intelligent job data extraction, and exposes everything through a robust REST API. Built with Django, FastAPI, and PostgreSQL.
 
-## Purpose & Portfolio Value
+## Purpose
 
-This project demonstrates proficiency in:
+This project started as a way to automate my job search across multiple Polish IT portals. It evolved into a learning exercise to understand how the pieces fit together in a real-world Python application:
 
-- **Python Backend Development** - Django 5.x with Django REST Framework for robust API design
-- **FastAPI & Async Processing** - High-performance background task handling
-- **LLM Integration** - Local AI inference with Ollama for structured data extraction
-- **Web Scraping** - Multi-portal data collection with BeautifulSoup4
-- **System Architecture** - Docker Compose orchestration with PostgreSQL
-- **Prompt Engineering** - Custom LLM prompts for job metadata extraction
+- **Django** + **DRF** — Built a Django backend with Django Rest Framework API for data storage and retrieval
+- **FastAPI** — Added async background task handling for long-running scraping jobs
+- **Ollama** — Integrated a local LLM to parse unstructured HTML into structured data
+- **BeautifulSoup4** — Scraped multiple job portals with rate limiting and retry logic
+- **Docker Compose** — Tied everything together with Docker
+- **PostgreSQL** — Learned Django ORM patterns, migrations, relationships
+- **Prompt engineering** — Experimented with getting structured output from freeform text
+
+The goal was to have a working automation tool while learning each technology hands-on, rather than building a toy project.
 
 ## Key Features
 
@@ -26,13 +29,13 @@ This project demonstrates proficiency in:
 
 | Layer | Technology |
 |-------|------------|
-| **Backend Framework** | Django 5.x, Django REST Framework, FastAPI |
+| **Backend Framework** | Django, Django REST Framework, FastAPI |
 | **Database** | PostgreSQL |
 | **LLM** | Ollama (Llama 3.2) |
 | **Scraping** | BeautifulSoup4, httpx |
-| **Data Validation** | Pydantic v2 |
+| **Data Validation** | Pydantic |
 | **Containerization** | Docker, Docker Compose |
-| **Python** | 3.11+ |
+| **Python** | 3.12 |
 
 ## Architecture Overview
 
@@ -84,27 +87,27 @@ cp .env.example .env
 3. **Start all services**
 
 ```bash
-docker-compose up --build
+docker compose up
 ```
 
 4. **Verify services are running**
 
 | Service | URL | Description |
 |---------|-----|-------------|
-| Django API | http://localhost:8000 | REST API for job listings |
-| FastAPI | http://localhost:8001 | Scraping engine endpoints |
+| Django | http://localhost:8000/admin | Site administration |
+| FastAPI | http://localhost:8001/docs | Scraping engine endpoints |
 | Ollama | http://localhost:11434 | LLM inference |
 
 5. **Pull the LLM model (first time only)**
 
 ```bash
-docker exec -it ollama ollama pull llama3.2
+docker compose exec -it ollama ollama pull llama3.2
 ```
 
 6. **Run Django migrations**
 
 ```bash
-docker-compose exec django python manage.py migrate
+docker compose exec django python manage.py migrate
 ```
 
 ## API Usage
@@ -177,10 +180,12 @@ Pydantic schemas enforce strict validation:
 
 ```python
 class JobExtractionSchema(BaseModel):
-    title: Optional[str] = None
-    company: Optional[str] = None
-    salary: Optional[str] = None
+    title: Optional[str] = Field(default=None, max_length=100)
+    company: Optional[str] = Field(default=None, max_length=100)
     years_of_experience: Optional[int] = None
+    salary: Optional[str] = None
+    expiry_date: Optional[date] = None
+    posted_at: Optional[date] = None
 ```
 
 ### Retry Logic
@@ -246,13 +251,13 @@ This project uses **pytest** with **pytest-django** for comprehensive test cover
 #### Django Tests
 ```bash
 # Run all Django tests via Docker
-docker compose exec django pytest job_finder/ --reuse-db
+docker compose exec django pytest --reuse-db
 ```
 
 #### FastAPI Tests
 ```bash
 # Run FastAPI tests via Docker
-docker compose exec fastapi_service pytest fastapi_app/tests/ -v
+docker compose exec fastapi_service pytest
 ```
 
 ## Future Enhancements

@@ -67,19 +67,7 @@ def perform_scraping_task(
                 logger.error("Error processing job listing %s: %s", target_url, e)
                 errors_occurred = True
         else:
-            scrapers = [
-                PracujplScraper(
-                    "https://it.pracuj.pl/praca?sc=0&its=backend&itth=37", "Pracuj.pl"
-                ),
-                JustJoinITScraper(
-                    "https://justjoin.it/api/candidate-api/offers?from=0&itemsCount=100&categories=python&currency=pln&orderBy=descending&sortBy=publishedAt",
-                    "JustJoinIT",
-                ),
-                TheProtocolITScraper(
-                    "https://theprotocol.it/filtry/python;t/backend;sp",
-                    "theprotocol.it",
-                ),
-            ]
+            scrapers = _get_active_scrapers()
 
             for scraper in scrapers:
                 if _scrape_portal(llm, scraper):
@@ -105,52 +93,6 @@ def perform_scraping_task(
         logger.error("Task %s failed: %s", task_id, e)
 
 
-""" async def perform_matching_task(llm, task_id: uuid.UUID):
-    logger.info("Matching Task %s is EXECUTING now...", task_id)
-    errors_occurred = False
-    task_record = None
-    try:
-        task_record = await sync_to_async(_get_task_record)(task_id)
-        resume_pl = await sync_to_async(Resume.objects.get)(pk=1)
-        resume_en = await sync_to_async(Resume.objects.get)(pk=2)
-
-        def fetch_jobs():
-            return list(JobListing.objects.all())
-
-        all_jobs = await sync_to_async(fetch_jobs, thread_sensitive=False)()
-        result = []
-        for job in all_jobs:
-            try:
-                llm_output = llm.analyze_job_fit(
-                    job, resume_pl.text_content, resume_en.text_content
-                ).model_dump()
-                await sync_to_async(JobMatch.objects.update_or_create)(
-                    job_listing=job, llm_output=llm_output
-                )
-                result.append(llm_output)
-            except Exception as e:
-                logger.error("Error processing job match for job %s: %s", job.pk, e)
-                errors_occurred = True
-        task_record.status = (
-            "completed" if not errors_occurred else "completed_with_errors"
-        )
-        await sync_to_async(task_record.save)()
-        logger.info("Matching Task %s completed.", task_id)
-    except ValueError:
-        pass
-    except Exception as e:
-        if task_record:
-            task_record.status = "failed"
-            await sync_to_async(task_record.save)()
-        else:
-            logger.error(
-                "Matching Task %s failed before task_record could be created: %s",
-                task_id,
-                e,
-            )
-        logger.error("Matching Task %s failed: %s", task_id, e) """
-
-
 def _get_task_record(task_id: uuid.UUID) -> dict:
     drf = DRFClient()
     task_record = drf.get("tasks", f"task_id={task_id}")[0]
@@ -161,6 +103,35 @@ def _get_task_record(task_id: uuid.UUID) -> dict:
     drf.post("tasks", task_record)
     drf.close()
     return task_record
+
+
+def _get_active_scrapers():
+    """Fetch active portals from Django API and instantiate scrapers."""
+    drf = DRFClient()
+    portals = drf.get("portals", "is_active=true")
+    drf.close()
+
+    scraper_map = {
+        "PracujplScraper": PracujplScraper,
+        "JustJoinITScraper": JustJoinITScraper,
+        "TheProtocolITScraper": TheProtocolITScraper,
+    }
+
+    scrapers = []
+    for portal in portals:
+        if not portal.get("scrape_url") or not portal.get("scraper_class"):
+            logger.warning(
+                f"Portal {portal.get('name')} missing scrape config, skipping"
+            )
+            continue
+
+        scraper_class = scraper_map.get(portal["scraper_class"])
+        if scraper_class:
+            scrapers.append(scraper_class(portal["scrape_url"], portal["name"]))
+        else:
+            logger.warning(f"Unknown scraper class: {portal['scraper_class']}")
+
+    return scrapers
 
 
 def _get_scraper_for_portal(url: str, portal: str):
@@ -177,7 +148,6 @@ def _get_scraper_for_portal(url: str, portal: str):
 
 def _process_job_listing(llm: LLM, job_listing_url: str, scraper) -> None:
     logger.debug("Scraping %s", job_listing_url)
-    # portal = Portal.objects.get(name=scraper.portal)
     drf = DRFClient()
     portal = drf.get("portals", f"name={scraper.portal}")
     logger.debug(portal)
@@ -274,18 +244,3 @@ async def schedule_scraping_task(
         message="Task started in background",
         status_url=f"/tasks/status/{task_id}",
     )
-
-
-""" @app.post("/tasks/schedule-matching", response_model=TaskScheduleResponse)
-async def schedule_matching_task(
-    background_tasks: BackgroundTasks = BackgroundTasks(), llm: LLM = Depends(get_llm)
-):
-    task_id = uuid.uuid4()
-    await sync_to_async(Task.objects.create)(task_id=task_id, status="pending")
-    background_tasks.add_task(perform_matching_task, llm, task_id)
-    logger.info("Matching Job %s scheduled", task_id)
-    return TaskScheduleResponse(
-        task_id=str(task_id),
-        message="Matching task started in background",
-        status_url=f"/tasks/status/{task_id}",
-    ) """

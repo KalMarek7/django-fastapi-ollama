@@ -16,7 +16,9 @@ class SystemInstructionAdmin(admin.ModelAdmin):
     list_display = ("pk", "name")
 
 
-admin.site.register(Portal)
+@admin.register(Portal)
+class PortalAdmin(admin.ModelAdmin):
+    list_display = ("name", "url", "scrape_url", "scraper_class", "is_active")
 
 
 @admin.action(description="Export selected jobs to CSV")

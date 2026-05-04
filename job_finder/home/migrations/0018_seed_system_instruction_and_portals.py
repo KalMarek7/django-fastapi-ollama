@@ -78,20 +78,26 @@ def create_default_portals(apps, schema_editor):
                 Portal(
                     id=1,
                     name="Pracuj.pl",
-                    url="https://it.pracuj.pl/praca?sc=0&its=backend&itth=37",
+                    url="https://pracuj.pl",
                     is_active=True,
+                    scrape_url="https://it.pracuj.pl/praca?sc=0&its=backend&itth=37",
+                    scraper_class="PracujplScraper",
                 ),
                 Portal(
                     id=2,
                     name="JustJoinIT",
                     url="https://justjoin.it",
                     is_active=True,
+                    scrape_url="https://justjoin.it/api/candidate-api/offers?from=0&itemsCount=100&categories=python&currency=pln&orderBy=descending&sortBy=publishedAt",
+                    scraper_class="JustJoinITScraper",
                 ),
                 Portal(
                     id=3,
                     name="theprotocol.it",
-                    url="https://theprotocol.it/filtry/python;t backend;sp",
+                    url="https://theprotocol.it",
                     is_active=True,
+                    scrape_url="https://theprotocol.it/filtry/python;t/backend;sp",
+                    scraper_class="TheProtocolITScraper",
                 ),
             ]
         )
@@ -99,7 +105,7 @@ def create_default_portals(apps, schema_editor):
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("home", "0016_alter_joblisting_options_alter_portal_options_and_more"),
+        ("home", "0017_portal_scrape_url_portal_scraper_class"),
     ]
     operations = [
         migrations.RunPython(

@@ -322,16 +322,3 @@ class JustJoinITScraper(BaseScraper):
                 sleep(1.5)
 
         return all_offer_urls
-
-
-class NoFluffJobsScraper(BaseScraper):
-    def get_all_listings(self) -> list[str]:
-        """data = self.get_data(
-            url=self.url,
-            as_json=True,
-            post=True,
-        )
-        print(len(data["postings"]))
-        print(data["totalCount"])
-        print(data["totalPages"])"""
-        return []
