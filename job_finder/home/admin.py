@@ -23,15 +23,20 @@ class PortalAdmin(admin.ModelAdmin):
 
 @admin.action(description="Export selected jobs to CSV")
 def export_as_csv(modeladmin, request, queryset):
+    if hasattr(modeladmin, "colab_fields"):
+        field_names = modeladmin.colab_fields
+    else:
+        field_names = [field.name for field in modeladmin.model._meta.fields]
+
     response = HttpResponse(content_type="text/csv")
     response["Content-Disposition"] = 'attachment; filename="jobs.csv"'
 
     writer = csv.writer(response)
     # Headers
-    writer.writerow([i for i in modeladmin.list_display])
+    writer.writerow([i for i in field_names])
 
     for job in queryset:
-        writer.writerow([getattr(job, i) for i in modeladmin.list_display])
+        writer.writerow([getattr(job, i) for i in field_names])
 
     return response
 
@@ -77,6 +82,20 @@ class JobListingAdmin(admin.ModelAdmin):
         "url",
         "created_at",
         "updated_at",
+    )
+    colab_fields = (
+        "pk",
+        "title",
+        "company",
+        "years_of_experience",
+        "salary",
+        "portal",
+        "expiry_date",
+        "posted_at",
+        "url",
+        "created_at",
+        "updated_at",
+        "text_content",
     )
     actions = [export_as_csv, replace_api_url]
 
